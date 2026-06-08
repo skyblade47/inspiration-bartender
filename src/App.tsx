@@ -7,7 +7,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { theme } from './constants/theme';
-import { initDatabase } from './services/database';
+import { initDatabase, getAllInspirations, saveSyncInspiration } from './services/database';
+import { SyncManager } from './services/sync';
 import { BarScreen } from './screens/BarScreen';
 import { CaptureScreen } from './screens/CaptureScreen';
 import { DetailScreen } from './screens/DetailScreen';
@@ -17,7 +18,47 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
   useEffect(() => {
-    initDatabase().catch(console.error);
+    const initApp = async () => {
+      try {
+        await initDatabase();
+        
+        const syncManager = SyncManager.getInstance();
+        await syncManager.init(
+          {
+            deviceName: '灵感调酒师',
+            port: 3002,
+            autoSync: true,
+            syncInterval: 5,
+          },
+          {
+            getLocalInspirations: async () => {
+              return await getAllInspirations();
+            },
+            saveInspiration: async (data: any) => {
+              await saveSyncInspiration(data);
+            },
+            onInspirationReceived: (inspiration) => {
+              console.log('[App] Received inspiration:', inspiration.title);
+            },
+            onDeviceDiscovered: (device) => {
+              console.log('[App] Discovered device:', device.name);
+            },
+            onError: (error) => {
+              console.error('[App] Sync error:', error);
+            },
+          }
+        );
+      } catch (error) {
+        console.error('[App] Initialization error:', error);
+      }
+    };
+
+    initApp();
+
+    return () => {
+      const syncManager = SyncManager.getInstance();
+      syncManager.shutdown().catch(console.error);
+    };
   }, []);
 
   return (

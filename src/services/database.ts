@@ -1,5 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 import { Inspiration, GlassType, InspirationStatus } from '../types';
+import { fromSyncInspiration } from './sync';
 
 const db = SQLite.openDatabaseSync('inspiration.db');
 
@@ -23,25 +24,25 @@ export async function initDatabase() {
 }
 
 export async function createInspiration(data: Partial<Inspiration>): Promise<string> {
-  const id = Date.now().toString();
+  const id = data.id || Date.now().toString();
   const now = Date.now();
   const inspiration: Inspiration = {
     id,
     name: data.name || '新灵感',
-    type: data.type || GlassType.MASON,
+    type: (data.type as GlassType) || GlassType.MASON,
     completion: data.completion || 0,
-    status: data.status || InspirationStatus.SEED,
+    status: (data.status as InspirationStatus) || InspirationStatus.SEED,
     rawInput: data.rawInput || { text: '' },
-    brewingLog: [],
-    brainstormCards: [],
-    collisionHistory: [],
-    structuredContent: {},
-    createdAt: now,
-    updatedAt: now,
+    brewingLog: data.brewingLog || [],
+    brainstormCards: data.brainstormCards || [],
+    collisionHistory: data.collisionHistory || [],
+    structuredContent: data.structuredContent || {},
+    createdAt: data.createdAt || now,
+    updatedAt: data.updatedAt || now,
   };
 
   await db.runAsync(
-    `INSERT INTO inspirations (id, name, type, completion, status, rawInput, brewingLog, brainstormCards, collisionHistory, structuredContent, createdAt, updatedAt) 
+    `INSERT OR REPLACE INTO inspirations (id, name, type, completion, status, rawInput, brewingLog, brainstormCards, collisionHistory, structuredContent, createdAt, updatedAt) 
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       inspiration.id,
@@ -59,6 +60,21 @@ export async function createInspiration(data: Partial<Inspiration>): Promise<str
     ]
   );
   return id;
+}
+
+export async function saveSyncInspiration(data: any): Promise<string> {
+  const now = Date.now();
+  const inspirationData = {
+    id: data.id,
+    name: data.name || '同步的灵感',
+    type: (data.glassType as GlassType) || GlassType.MASON,
+    completion: data.completion || 0,
+    status: InspirationStatus.SEED,
+    rawInput: data.rawInput || { text: data.content || '' },
+    createdAt: now,
+    updatedAt: now,
+  };
+  return await createInspiration(inspirationData);
 }
 
 export async function getAllInspirations(): Promise<Inspiration[]> {
