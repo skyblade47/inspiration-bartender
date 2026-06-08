@@ -35,4 +35,5 @@ export const barColors = {
   accent: '#FF8C00',
   text: '#f5f0e6',
   textSecondary: '#a89888',
+  outline: '#4a3a2a',
 };
