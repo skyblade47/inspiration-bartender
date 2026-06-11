@@ -12,6 +12,7 @@ import { SyncManager } from './services/sync';
 import { BarScreen } from './screens/BarScreen';
 import { CaptureScreen } from './screens/CaptureScreen';
 import { DetailScreen } from './screens/DetailScreen';
+import { BrewingScreen } from './screens/BrewingScreen';
 import { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -94,6 +95,11 @@ export default function App() {
                 name="Detail" 
                 component={DetailScreen} 
                 options={{ title: '灵感详情' }}
+              />
+              <Stack.Screen 
+                name="Brewing" 
+                component={BrewingScreen} 
+                options={{ title: '调酒工作台' }}
               />
             </Stack.Navigator>
           </NavigationContainer>

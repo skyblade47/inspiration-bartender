@@ -240,7 +240,7 @@ export class SyncManager {
     return await response.json();
   }
 
-  sendInspiration(inspiration: any, targetDeviceId?: string): Promise<void> {
+  async sendInspiration(inspiration: any, targetDeviceId?: string): Promise<void> {
     const syncInsp = toSyncInspiration(
       {
         id: inspiration.id || generateId(),
@@ -261,11 +261,12 @@ export class SyncManager {
     if (targetDeviceId) {
       const device = this.discovery.getDevice(targetDeviceId);
       if (device) {
-        return this.pushToDevice(device, [syncInsp]);
+        await this.pushToDevice(device, [syncInsp]);
+        return;
       }
     }
 
-    return this.pushToWritingCoach();
+    await this.pushToWritingCoach();
   }
 
   addDevice(ip: string, port: number, type: string, name: string): SyncDevice {

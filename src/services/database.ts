@@ -128,6 +128,22 @@ export async function updateInspiration(id: string, data: Partial<Inspiration>):
     updates.push('rawInput = ?');
     values.push(JSON.stringify(data.rawInput));
   }
+  if (data.brewingLog !== undefined) {
+    updates.push('brewingLog = ?');
+    values.push(JSON.stringify(data.brewingLog));
+  }
+  if (data.brainstormCards !== undefined) {
+    updates.push('brainstormCards = ?');
+    values.push(JSON.stringify(data.brainstormCards));
+  }
+  if (data.collisionHistory !== undefined) {
+    updates.push('collisionHistory = ?');
+    values.push(JSON.stringify(data.collisionHistory));
+  }
+  if (data.structuredContent !== undefined) {
+    updates.push('structuredContent = ?');
+    values.push(JSON.stringify(data.structuredContent));
+  }
 
   if (updates.length === 0) return;
 

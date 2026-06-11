@@ -40,10 +40,17 @@ export class DeviceDiscovery {
 
     for (const [id, device] of this.devices) {
       try {
+        // 使用 AbortController 实现超时
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        
         const response = await fetch(`${device.url}/api/info`, {
           method: 'GET',
-          timeout: 5000,
+          signal: controller.signal,
         });
+        
+        clearTimeout(timeoutId);
+        
         if (response.ok) {
           device.lastSeen = now;
           this.devices.set(id, device);

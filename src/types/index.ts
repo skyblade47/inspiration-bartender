@@ -45,4 +45,5 @@ export type RootStackParamList = {
   Bar: undefined;
   Capture: undefined;
   Detail: { inspirationId: string };
+  Brewing: { inspirationId: string };
 };
