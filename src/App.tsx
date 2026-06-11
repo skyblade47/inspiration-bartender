@@ -13,6 +13,7 @@ import { BarScreen } from './screens/BarScreen';
 import { CaptureScreen } from './screens/CaptureScreen';
 import { DetailScreen } from './screens/DetailScreen';
 import { BrewingScreen } from './screens/BrewingScreen';
+import { CollisionScreen } from './screens/CollisionScreen';
 import { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -100,6 +101,11 @@ export default function App() {
                 name="Brewing" 
                 component={BrewingScreen} 
                 options={{ title: '调酒工作台' }}
+              />
+              <Stack.Screen 
+                name="Collision" 
+                component={CollisionScreen} 
+                options={{ title: '灵感碰撞' }}
               />
             </Stack.Navigator>
           </NavigationContainer>

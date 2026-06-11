@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Text } from 'react-native';
-import { FAB, ActivityIndicator, Portal, Snackbar } from 'react-native-paper';
+import React, { useEffect, useState } from 'react';
+import { View, StyleSheet, ScrollView, Text, TouchableOpacity } from 'react-native';
+import { FAB, ActivityIndicator, Portal, Snackbar, Button } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types';
@@ -13,13 +13,54 @@ type BarScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Ba
 export const BarScreen: React.FC = () => {
   const navigation = useNavigation<BarScreenNavigationProp>();
   const { inspirations, isLoading, error, loadInspirations, clearError } = useInspirationStore();
+  
+  // 多选状态
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   useEffect(() => {
     loadInspirations();
   }, [loadInspirations]);
 
   const handleInspirationPress = (id: string) => {
-    navigation.navigate('Detail', { inspirationId: id });
+    if (isSelectionMode) {
+      // 多选模式：切换选中状态
+      toggleSelection(id);
+    } else {
+      // 正常模式：进入详情
+      navigation.navigate('Detail', { inspirationId: id });
+    }
+  };
+
+  const handleInspirationLongPress = (id: string) => {
+    // 长按进入多选模式
+    if (!isSelectionMode) {
+      setIsSelectionMode(true);
+      setSelectedIds([id]);
+    }
+  };
+
+  const toggleSelection = (id: string) => {
+    setSelectedIds(prev => {
+      if (prev.includes(id)) {
+        return prev.filter(i => i !== id);
+      } else if (prev.length < 3) {
+        return [...prev, id];
+      }
+      return prev;
+    });
+  };
+
+  const handleCancelSelection = () => {
+    setIsSelectionMode(false);
+    setSelectedIds([]);
+  };
+
+  const handleStartCollision = () => {
+    if (selectedIds.length >= 2) {
+      navigation.navigate('Collision', { selectedIds });
+      handleCancelSelection();
+    }
   };
 
   const handleAddInspiration = () => {
@@ -49,30 +90,74 @@ export const BarScreen: React.FC = () => {
             <Text style={styles.emptyText}>还没有灵感，点击 + 开始创作</Text>
           ) : (
             inspirations.map((inspiration) => (
-              <View key={inspiration.id} style={styles.glassWrapper}>
+              <TouchableOpacity
+                key={inspiration.id}
+                onPress={() => handleInspirationPress(inspiration.id)}
+                onLongPress={() => handleInspirationLongPress(inspiration.id)}
+                style={styles.glassWrapper}
+              >
+                {/* 选择指示器 */}
+                {isSelectionMode && (
+                  <View style={[
+                    styles.selectionIndicator,
+                    selectedIds.includes(inspiration.id) && styles.selectionIndicatorActive
+                  ]}>
+                    <Text style={styles.selectionText}>
+                      {selectedIds.includes(inspiration.id) ? '✓' : ''}
+                    </Text>
+                  </View>
+                )}
+                
                 <Glass
                   type={inspiration.type}
                   completion={inspiration.completion}
                   status={inspiration.status}
                   size="medium"
-                  onPress={() => handleInspirationPress(inspiration.id)}
                 />
                 <Text style={styles.glassLabel} numberOfLines={1}>
                   {inspiration.name}
                 </Text>
-              </View>
+              </TouchableOpacity>
             ))
           )}
         </ScrollView>
       </View>
 
+      {/* 多选模式底部栏 */}
+      {isSelectionMode && (
+        <View style={styles.selectionBar}>
+          <Text style={styles.selectionCount}>
+            已选择 {selectedIds.length}/3 个灵感
+          </Text>
+          <View style={styles.selectionActions}>
+            <Button
+              mode="outlined"
+              onPress={handleCancelSelection}
+              textColor={barColors.text}
+            >
+              取消
+            </Button>
+            <Button
+              mode="contained"
+              onPress={handleStartCollision}
+              disabled={selectedIds.length < 2}
+              style={styles.collisionButton}
+            >
+              🍸 调制特调
+            </Button>
+          </View>
+        </View>
+      )}
+
       {/* FAB 按钮 */}
-      <FAB
-        icon="plus"
-        style={styles.fab}
-        color={barColors.background}
-        onPress={handleAddInspiration}
-      />
+      {!isSelectionMode && (
+        <FAB
+          icon="plus"
+          style={styles.fab}
+          color={barColors.background}
+          onPress={handleAddInspiration}
+        />
+      )}
 
       {/* 错误提示 */}
       <Portal>
@@ -140,6 +225,29 @@ const styles = StyleSheet.create({
   },
   glassWrapper: {
     alignItems: 'center',
+    position: 'relative',
+  },
+  selectionIndicator: {
+    position: 'absolute',
+    top: -10,
+    right: -10,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderWidth: 2,
+    borderColor: barColors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  selectionIndicatorActive: {
+    backgroundColor: barColors.primary,
+  },
+  selectionText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   glassLabel: {
     color: barColors.text,
@@ -159,5 +267,30 @@ const styles = StyleSheet.create({
     right: 20,
     bottom: 20,
     backgroundColor: barColors.primary,
+  },
+  selectionBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: barColors.surface,
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: barColors.border,
+  },
+  selectionCount: {
+    color: barColors.text,
+    fontSize: 14,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  selectionActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  collisionButton: {
+    flex: 1,
+    marginLeft: 12,
   },
 });
