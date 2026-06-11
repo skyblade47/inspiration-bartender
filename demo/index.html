@@ -1,0 +1,1862 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>灵感调酒师 - HTML 演示</title>
+    <style>
+        /* ============================================
+           全局样式
+           ============================================ */
+        :root {
+            --bg-dark: #1a1410;
+            --bg-bar: #3d2e24;
+            --bg-surface: #2a201a;
+            --primary: #D4A017;
+            --accent: #FF8C42;
+            --text: #E8E8E8;
+            --text-secondary: #A8A8A8;
+            --glass-brandy: #1E3A5F;
+            --glass-champagne: #9B59B6;
+            --glass-wine: #8B0000;
+            --glass-cocktail: #D4A017;
+            --glass-beaker: #00FF7F;
+            --glass-mason: #FF8C00;
+            --glass-flask: #87CEEB;
+            --glass-martini: #C0C0C0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        /* ============================================
+           布局
+           ============================================ */
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 320px;
+            background: var(--bg-surface);
+            border-right: 1px solid rgba(255,255,255,0.1);
+            padding: 20px;
+            overflow-y: auto;
+            max-height: 100vh;
+            position: sticky;
+            top: 0;
+        }
+
+        .main {
+            flex: 1;
+            padding: 20px;
+        }
+
+        .panel {
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .panel-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* ============================================
+           表单样式
+           ============================================ */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .form-input,
+        .form-select,
+        .form-textarea {
+            width: 100%;
+            padding: 10px 12px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .form-input:focus,
+        .form-select:focus,
+        .form-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .form-textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: #000;
+        }
+
+        .btn-primary:hover {
+            background: #e6b020;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: var(--text);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        /* ============================================
+           状态指示器
+           ============================================ */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-success {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4CAF50;
+        }
+
+        .status-error {
+            background: rgba(244, 67, 54, 0.2);
+            color: #F44336;
+        }
+
+        .status-warning {
+            background: rgba(255, 193, 7, 0.2);
+            color: #FFC107;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* ============================================
+           日志面板
+           ============================================ */
+        .log-container {
+            background: #000;
+            border-radius: 8px;
+            padding: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+        }
+
+        .log-entry {
+            margin-bottom: 8px;
+            padding: 8px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 4px;
+            border-left: 3px solid var(--primary);
+        }
+
+        .log-entry.error {
+            border-left-color: #F44336;
+            color: #F44336;
+        }
+
+        .log-entry.success {
+            border-left-color: #4CAF50;
+        }
+
+        .log-timestamp {
+            color: var(--text-secondary);
+            font-size: 11px;
+        }
+
+        .log-content {
+            margin-top: 4px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        /* ============================================
+           吧台场景
+           ============================================ */
+        .bar-scene {
+            background: linear-gradient(180deg, #2a1f18 0%, #1a1410 100%);
+            border-radius: 16px;
+            padding: 30px;
+            min-height: 500px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .shelf {
+            position: absolute;
+            top: 40px;
+            left: 0;
+            right: 0;
+            height: 100px;
+            background: linear-gradient(180deg, #3d2e24 0%, #2a1f18 100%);
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 20px;
+            padding: 0 20px;
+        }
+
+        .spotlight {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 200px;
+            background: radial-gradient(ellipse at top, rgba(212, 160, 23, 0.15) 0%, transparent 70%);
+        }
+
+        .bar-counter {
+            position: absolute;
+            bottom: 60px;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: linear-gradient(180deg, #5d4b3f 0%, #3d2e24 100%);
+            border-radius: 8px 8px 0 0;
+        }
+
+        .glass-container {
+            position: absolute;
+            bottom: 120px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            padding: 0 20px;
+        }
+
+        /* ============================================
+           玻璃杯组件
+           ============================================ */
+        .glass {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+            position: relative;
+        }
+
+        .glass:hover {
+            transform: scale(1.05);
+        }
+
+        .glass.selected {
+            transform: scale(1.1);
+        }
+
+        .glass-body {
+            width: 60px;
+            height: 80px;
+            background: rgba(255,255,255,0.1);
+            border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 4px 4px 20px 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .glass-liquid {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--liquid-color, var(--glass-mason));
+            transition: height 0.5s ease-out;
+            border-radius: 0 0 18px 18px;
+        }
+
+        .glass-liquid::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 8px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 50%;
+            transform: translateY(-50%);
+        }
+
+        .glass-label {
+            margin-top: 10px;
+            font-size: 12px;
+            color: var(--text);
+            text-align: center;
+            max-width: 80px;
+        }
+
+        .selection-indicator {
+            position: absolute;
+            top: -15px;
+            right: -5px;
+            width: 24px;
+            height: 24px;
+            background: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+            color: #000;
+            opacity: 0;
+            transform: scale(0);
+            transition: all 0.2s;
+        }
+
+        .glass.selected .selection-indicator {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        /* ============================================
+           对话界面
+           ============================================ */
+        .chat-container {
+            background: var(--bg-surface);
+            border-radius: 16px;
+            padding: 20px;
+            max-height: 500px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 16px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .chat-message {
+            margin-bottom: 16px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-message.user {
+            align-items: flex-end;
+        }
+
+        .chat-message.assistant {
+            align-items: flex-start;
+        }
+
+        .message-role {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .message-content {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 16px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .chat-message.user .message-content {
+            background: var(--primary);
+            color: #000;
+            border-bottom-right-radius: 4px;
+        }
+
+        .chat-message.assistant .message-content {
+            background: rgba(255,255,255,0.1);
+            color: var(--text);
+            border-bottom-left-radius: 4px;
+        }
+
+        .chat-input-area {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .chat-input {
+            flex: 1;
+        }
+
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 12px 16px;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--text-secondary);
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typing {
+            0%, 100% { opacity: 0.4; transform: translateY(0); }
+            50% { opacity: 1; transform: translateY(-4px); }
+        }
+
+        /* ============================================
+           配方卡片
+           ============================================ */
+        .recipe-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .recipe-card {
+            background: var(--bg-surface);
+            border-radius: 12px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .recipe-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--primary);
+        }
+
+        .recipe-card.selected {
+            border-color: var(--primary);
+            background: rgba(212, 160, 23, 0.1);
+        }
+
+        .recipe-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .recipe-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .recipe-score {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: var(--primary);
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .recipe-description {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+
+        .recipe-keywords {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .keyword-tag {
+            padding: 4px 10px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            font-size: 12px;
+            color: var(--text);
+        }
+
+        .recipe-directions {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .recipe-directions h4 {
+            font-size: 12px;
+            color: var(--text);
+            margin-bottom: 6px;
+        }
+
+        .recipe-directions ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .recipe-directions li {
+            margin-bottom: 4px;
+            padding-left: 12px;
+            position: relative;
+        }
+
+        .recipe-directions li::before {
+            content: '•';
+            position: absolute;
+            left: 0;
+            color: var(--primary);
+        }
+
+        /* ============================================
+           摇晃动画
+           ============================================ */
+        .shake-animation {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+
+        .shaker {
+            width: 80px;
+            height: 120px;
+            background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.05) 100%);
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 8px 8px 30px 30px;
+            position: relative;
+            transform-origin: center bottom;
+        }
+
+        .shaker.pouring {
+            animation: pour 0.5s ease-out;
+        }
+
+        .shaker.shaking {
+            animation: shake 0.15s ease-in-out 10;
+        }
+
+        .shaker.pouring-out {
+            animation: pourOut 0.5s ease-in;
+        }
+
+        @keyframes pour {
+            0% { transform: rotate(-30deg) translateY(-20px); }
+            100% { transform: rotate(0deg) translateY(0); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: rotate(-15deg); }
+            50% { transform: rotate(15deg); }
+        }
+
+        @keyframes pourOut {
+            0% { transform: rotate(0deg) translateY(0); }
+            100% { transform: rotate(30deg) translateY(-20px); }
+        }
+
+        .shaker-liquid {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            background: linear-gradient(180deg, var(--primary) 0%, var(--accent) 100%);
+            border-radius: 0 0 25px 25px;
+            transition: height 0.5s;
+        }
+
+        .pour-stream {
+            position: absolute;
+            width: 8px;
+            background: var(--primary);
+            border-radius: 4px;
+            opacity: 0;
+        }
+
+        .pour-stream.active {
+            opacity: 1;
+            animation: stream 0.8s ease-out;
+        }
+
+        @keyframes stream {
+            0% { height: 0; opacity: 0; }
+            20% { height: 60px; opacity: 1; }
+            100% { height: 60px; opacity: 0; }
+        }
+
+        .animation-text {
+            margin-top: 20px;
+            font-size: 16px;
+            color: var(--text);
+        }
+
+        /* ============================================
+           进度指示器
+           ============================================ */
+        .progress-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .progress-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .progress-dot {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            border: 2px solid rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        .progress-dot.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: #000;
+        }
+
+        .progress-dot.completed {
+            background: #4CAF50;
+            border-color: #4CAF50;
+            color: #fff;
+        }
+
+        .progress-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            flex: 1;
+        }
+
+        .progress-label.active {
+            color: var(--text);
+        }
+
+        .progress-bar {
+            flex: 1;
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: var(--primary);
+            transition: width 0.3s;
+        }
+
+        /* ============================================
+           标签页
+           ============================================ */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 20px;
+            background: rgba(255,255,255,0.05);
+            padding: 4px;
+            border-radius: 10px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 10px 16px;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tab.active {
+            background: var(--primary);
+            color: #000;
+        }
+
+        .tab:hover:not(.active) {
+            background: rgba(255,255,255,0.1);
+        }
+
+        /* ============================================
+           响应式
+           ============================================ */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                max-height: none;
+                position: static;
+            }
+        }
+
+        /* ============================================
+           隐藏元素
+           ============================================ */
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 侧边栏：LLM 配置 -->
+        <aside class="sidebar">
+            <!-- LLM 配置面板 -->
+            <div class="panel">
+                <div class="panel-title">
+                    ⚙️ LLM 配置
+                </div>
+
+                <!-- 连接状态 -->
+                <div id="connectionStatus" class="form-group">
+                    <span class="status-badge status-warning">
+                        <span class="status-dot"></span>
+                        未连接
+                    </span>
+                </div>
+
+                <!-- Provider 选择 -->
+                <div class="form-group">
+                    <label class="form-label">LLM 提供商</label>
+                    <select id="llmProvider" class="form-select">
+                        <option value="openai">OpenAI (GPT-4/3.5)</option>
+                        <option value="anthropic">Anthropic (Claude)</option>
+                        <option value="ollama">Ollama (本地模型)</option>
+                        <option value="custom">自定义 API</option>
+                    </select>
+                </div>
+
+                <!-- API Key -->
+                <div class="form-group">
+                    <label class="form-label">API Key</label>
+                    <input type="password" id="apiKey" class="form-input" placeholder="sk-...">
+                </div>
+
+                <!-- Base URL -->
+                <div class="form-group">
+                    <label class="form-label">API 端点</label>
+                    <input type="text" id="baseUrl" class="form-input" placeholder="https://api.openai.com/v1">
+                </div>
+
+                <!-- 模型选择 -->
+                <div class="form-group">
+                    <label class="form-label">模型</label>
+                    <select id="model" class="form-select">
+                        <option value="gpt-4">GPT-4</option>
+                        <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                    </select>
+                </div>
+
+                <!-- 测试按钮 -->
+                <div class="btn-group">
+                    <button id="testConnectionBtn" class="btn btn-secondary" onclick="testConnection()">
+                        🔗 测试连接
+                    </button>
+                    <button id="saveConfigBtn" class="btn btn-primary" onclick="saveConfig()">
+                        💾 保存配置
+                    </button>
+                </div>
+            </div>
+
+            <!-- 测试场景 -->
+            <div class="panel">
+                <div class="panel-title">
+                    🧪 测试场景
+                </div>
+
+                <div class="btn-group" style="flex-direction: column;">
+                    <button class="btn btn-secondary" onclick="runBrewingTest()">
+                        🍸 调酒对话测试
+                    </button>
+                    <button class="btn btn-secondary" onclick="runScoringTest()">
+                        📊 灵感评分测试
+                    </button>
+                    <button class="btn btn-secondary" onclick="runRecipeTest()">
+                        🍹 配方生成测试
+                    </button>
+                    <button class="btn btn-secondary" onclick="runBrainstormTest()">
+                        💡 头脑风暴测试
+                    </button>
+                </div>
+            </div>
+
+            <!-- 日志面板 -->
+            <div class="panel">
+                <div class="panel-title">
+                    📋 请求日志
+                </div>
+                <div class="log-container" id="logContainer">
+                    <div class="log-entry">
+                        <div class="log-timestamp">等待连接...</div>
+                        <div class="log-content">配置 LLM 并点击"测试连接"开始</div>
+                    </div>
+                </div>
+                <button class="btn btn-secondary" style="width: 100%; margin-top: 10px;" onclick="clearLogs()">
+                    🗑️ 清空日志
+                </button>
+            </div>
+        </aside>
+
+        <!-- 主内容区 -->
+        <main class="main">
+            <!-- 标签页 -->
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('bar')">🍸 吧台场景</button>
+                <button class="tab" onclick="switchTab('brewing')">🤔 调酒工作台</button>
+                <button class="tab" onclick="switchTab('collision')">💥 灵感碰撞</button>
+            </div>
+
+            <!-- 吧台场景 -->
+            <section id="barSection" class="tab-content">
+                <div class="bar-scene">
+                    <div class="spotlight"></div>
+                    <div class="shelf">
+                        <span style="font-size: 24px;">🍾</span>
+                        <span style="font-size: 24px;">🍷</span>
+                        <span style="font-size: 24px;">🥃</span>
+                        <span style="font-size: 24px;">🍹</span>
+                        <span style="font-size: 24px;">🍺</span>
+                    </div>
+
+                    <div class="glass-container" id="glassContainer">
+                        <!-- 玻璃杯将通过 JS 动态生成 -->
+                    </div>
+
+                    <div class="bar-counter"></div>
+                </div>
+
+                <!-- 操作按钮 -->
+                <div style="margin-top: 20px; display: flex; gap: 10px;">
+                    <button class="btn btn-primary" onclick="addGlass()">
+                        ➕ 添加灵感
+                    </button>
+                    <button id="collisionBtn" class="btn btn-secondary" onclick="startCollision()" disabled>
+                        🍸 调制特调
+                    </button>
+                </div>
+
+                <div id="selectionInfo" class="panel" style="margin-top: 20px;">
+                    <div class="panel-title">📌 多选提示</div>
+                    <p style="font-size: 14px; color: var(--text-secondary);">
+                        💡 长按或点击杯子进入多选模式，选择 2-3 个灵感进行碰撞混合
+                    </p>
+                    <div id="selectedCount" style="margin-top: 10px; font-size: 14px;">
+                        已选择: 0/3
+                    </div>
+                </div>
+            </section>
+
+            <!-- 调酒工作台 -->
+            <section id="brewingSection" class="tab-content hidden">
+                <div class="chat-container">
+                    <div class="chat-header">
+                        <div>
+                            <h3>🤔 调酒工作台</h3>
+                            <p style="font-size: 13px; color: var(--text-secondary);">
+                                通过对话完善你的灵感
+                            </p>
+                        </div>
+                        <div class="progress-container" style="width: 200px;">
+                            <div class="progress-item">
+                                <div class="progress-dot active">1</div>
+                                <span class="progress-label active">感知</span>
+                            </div>
+                            <div class="progress-item">
+                                <div class="progress-dot">2</div>
+                                <span class="progress-label">细化</span>
+                            </div>
+                            <div class="progress-item">
+                                <div class="progress-dot">3</div>
+                                <span class="progress-label">延伸</span>
+                            </div>
+                            <div class="progress-item">
+                                <div class="progress-dot">4</div>
+                                <span class="progress-label">连接</span>
+                            </div>
+                            <div class="progress-item">
+                                <div class="progress-dot">5</div>
+                                <span class="progress-label">结构化</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="chat-message assistant">
+                            <div class="message-role">🤔 调酒师</div>
+                            <div class="message-content">
+                                欢迎来到调酒工作台！🍸 请选择一个灵感，然后我会通过几个问题帮你完善它。
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chat-input-area">
+                        <input type="text" id="chatInput" class="form-input chat-input" 
+                               placeholder="输入你的回答..."
+                               onkeypress="if(event.key==='Enter') sendMessage()">
+                        <button class="btn btn-primary" onclick="sendMessage()">
+                            ➤ 发送
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 灵感碰撞 -->
+            <section id="collisionSection" class="tab-content hidden">
+                <!-- 选择阶段 -->
+                <div id="collisionSelectPhase">
+                    <h2 style="margin-bottom: 20px;">💥 灵感碰撞</h2>
+                    <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                        选择 2-3 个灵感进行混合，创造新的创意组合
+                    </p>
+
+                    <div id="collisionGlassContainer" class="glass-container" style="position: static; flex-wrap: wrap; gap: 40px; justify-content: flex-start;">
+                        <!-- 玻璃杯将通过 JS 动态生成 -->
+                    </div>
+
+                    <div style="margin-top: 30px;">
+                        <button id="startCollisionBtn" class="btn btn-primary" onclick="runCollisionAnimation()" disabled>
+                            🍸 开始调制
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 动画阶段 -->
+                <div id="collisionAnimationPhase" class="hidden">
+                    <div class="shake-animation">
+                        <div class="shaker" id="shaker">
+                            <div class="shaker-liquid" style="height: 0%;" id="shakerLiquid"></div>
+                        </div>
+
+                        <div id="pourStreams" style="position: absolute; top: 150px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px;">
+                        </div>
+
+                        <p class="animation-text" id="animationText">正在倒入液体...</p>
+
+                        <div style="margin-top: 30px;">
+                            <button class="btn btn-secondary" onclick="skipAnimation()">
+                                ⏭️ 跳过动画
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 配方阶段 -->
+                <div id="collisionRecipePhase" class="hidden">
+                    <h2 style="margin-bottom: 10px;">🍹 特调生成完成</h2>
+                    <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                        选择一个创意方向，或生成新的方案
+                    </p>
+
+                    <div class="recipe-grid" id="recipeGrid">
+                        <!-- 配方卡片将通过 JS 动态生成 -->
+                    </div>
+
+                    <div style="margin-top: 20px; display: flex; gap: 10px;">
+                        <button class="btn btn-secondary" onclick="regenerateRecipes()">
+                            🔄 换一批
+                        </button>
+                        <button id="confirmRecipeBtn" class="btn btn-primary" onclick="confirmRecipe()" disabled>
+                            ✓ 确认选择
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        /* ============================================
+           全局状态
+           ============================================ */
+        const state = {
+            llmConnected: false,
+            selectedGlasses: new Set(),
+            glasses: [],
+            currentInspiration: null,
+            chatMessages: [],
+            currentStep: 0,
+            recipes: [],
+            selectedRecipe: null,
+        };
+
+        const GLASS_TYPES = {
+            brandy: { color: '#1E3A5F', icon: '🥃', name: '白兰地杯' },
+            champagne: { color: '#9B59B6', icon: '🍾', name: '香槟杯' },
+            wine: { color: '#8B0000', icon: '🍷', name: '红酒杯' },
+            cocktail: { color: '#D4A017', icon: '🥂', name: '鸡尾酒杯' },
+            beaker: { color: '#00FF7F', icon: '🧪', name: '烧杯' },
+            mason: { color: '#FF8C00', icon: '🫙', name: '梅森罐' },
+            flask: { color: '#87CEEB', icon: '🧬', name: '锥形瓶' },
+            martini: { color: '#C0C0C0', icon: '🍹', name: '马天尼杯' },
+        };
+
+        const BREWING_STEPS = [
+            '这个灵感最初是在什么情境下出现的？',
+            '如果用一个颜色/声音/气味形容这个感觉，会是什么？',
+            '这个灵感如果发展成作品，你希望谁看到它？',
+            '它让你联想到你之前记录过的其他灵感吗？',
+            '现在试着用一句话概括这个灵感的核心',
+        ];
+
+        /* ============================================
+           LLM 配置和连接
+           ============================================ */
+        function loadConfig() {
+            const config = localStorage.getItem('llmConfig');
+            if (config) {
+                const cfg = JSON.parse(config);
+                document.getElementById('llmProvider').value = cfg.provider || 'openai';
+                document.getElementById('apiKey').value = cfg.apiKey || '';
+                document.getElementById('baseUrl').value = cfg.baseUrl || '';
+                document.getElementById('model').value = cfg.model || 'gpt-4';
+            }
+        }
+
+        function saveConfig() {
+            const config = {
+                provider: document.getElementById('llmProvider').value,
+                apiKey: document.getElementById('apiKey').value,
+                baseUrl: document.getElementById('baseUrl').value,
+                model: document.getElementById('model').value,
+            };
+            localStorage.setItem('llmConfig', JSON.stringify(config));
+            addLog('success', '配置已保存到浏览器本地存储');
+        }
+
+        async function testConnection() {
+            const btn = document.getElementById('testConnectionBtn');
+            btn.disabled = true;
+            btn.textContent = '🔄 测试中...';
+
+            const provider = document.getElementById('llmProvider').value;
+            const apiKey = document.getElementById('apiKey').value;
+            const baseUrl = document.getElementById('baseUrl').value || getDefaultBaseUrl(provider);
+            const model = document.getElementById('model').value;
+
+            try {
+                const response = await callLLM({
+                    provider,
+                    apiKey,
+                    baseUrl,
+                    model,
+                    messages: [
+                        { role: 'user', content: '你好，请回复"连接成功"' }
+                    ]
+                });
+
+                if (response.success) {
+                    state.llmConnected = true;
+                    updateConnectionStatus(true);
+                    addLog('success', `连接成功！使用模型: ${model}`);
+                } else {
+                    throw new Error(response.error);
+                }
+            } catch (error) {
+                state.llmConnected = false;
+                updateConnectionStatus(false, error.message);
+                addLog('error', `连接失败: ${error.message}`);
+            }
+
+            btn.disabled = false;
+            btn.textContent = '🔗 测试连接';
+        }
+
+        function getDefaultBaseUrl(provider) {
+            const urls = {
+                openai: 'https://api.openai.com/v1',
+                anthropic: 'https://api.anthropic.com/v1',
+                ollama: 'http://localhost:11434/v1',
+                custom: '',
+            };
+            return urls[provider] || '';
+        }
+
+        function updateConnectionStatus(connected, error = '') {
+            const statusEl = document.getElementById('connectionStatus');
+            if (connected) {
+                statusEl.innerHTML = `
+                    <span class="status-badge status-success">
+                        <span class="status-dot"></span>
+                        已连接
+                    </span>
+                `;
+            } else {
+                statusEl.innerHTML = `
+                    <span class="status-badge status-error">
+                        ❌ 未连接 ${error ? ': ' + error : ''}
+                    </span>
+                `;
+            }
+        }
+
+        async function callLLM(params) {
+            const { provider, apiKey, baseUrl, model, messages, temperature = 0.7, maxTokens = 1000 } = params;
+
+            addLog(`调用 LLM: ${provider}/${model}`);
+
+            let endpoint, headers, body;
+
+            if (provider === 'openai' || provider === 'ollama' || provider === 'custom') {
+                endpoint = `${baseUrl}/chat/completions`;
+                headers = {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`,
+                };
+                body = {
+                    model,
+                    messages,
+                    temperature,
+                    max_tokens: maxTokens,
+                };
+            } else if (provider === 'anthropic') {
+                endpoint = 'https://api.anthropic.com/v1/messages';
+                headers = {
+                    'Content-Type': 'application/json',
+                    'x-api-key': apiKey,
+                    'anthropic-version': '2023-06-01',
+                };
+                body = {
+                    model,
+                    messages: messages.filter(m => m.role !== 'system'),
+                    system: messages.find(m => m.role === 'system')?.content,
+                    max_tokens: maxTokens,
+                    temperature,
+                };
+            }
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify(body),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error?.message || `HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                let content;
+                if (provider === 'anthropic') {
+                    content = data.content[0].text;
+                } else {
+                    content = data.choices[0].message.content;
+                }
+
+                addLog('success', `响应: ${content.substring(0, 100)}...`);
+
+                return { success: true, content, data };
+            } catch (error) {
+                return { success: false, error: error.message };
+            }
+        }
+
+        /* ============================================
+           日志
+           ============================================ */
+        function addLog(type, content) {
+            const container = document.getElementById('logContainer');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.innerHTML = `
+                <div class="log-timestamp">${new Date().toLocaleTimeString()}</div>
+                <div class="log-content">${content}</div>
+            `;
+            container.insertBefore(entry, container.firstChild);
+        }
+
+        function clearLogs() {
+            document.getElementById('logContainer').innerHTML = '';
+            addLog('已清空日志');
+        }
+
+        /* ============================================
+           标签页切换
+           ============================================ */
+        function switchTab(tab) {
+            // 更新标签按钮状态
+            document.querySelectorAll('.tab').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // 切换内容
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`${tab}Section`).classList.remove('hidden');
+        }
+
+        /* ============================================
+           玻璃杯管理
+           ============================================ */
+        function initGlasses() {
+            // 示例灵感数据
+            state.glasses = [
+                { id: 1, name: '街角的咖啡店', type: 'mason', completion: 45 },
+                { id: 2, name: '雨天的爵士乐', type: 'champagne', completion: 70 },
+                { id: 3, name: '老电影氛围', type: 'wine', completion: 30 },
+                { id: 4, name: '暖黄灯光', type: 'cocktail', completion: 55 },
+            ];
+            renderGlasses();
+        }
+
+        function renderGlasses(containerId = 'glassContainer') {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+
+            state.glasses.forEach(glass => {
+                const glassEl = document.createElement('div');
+                glassEl.className = `glass ${state.selectedGlasses.has(glass.id) ? 'selected' : ''}`;
+                glassEl.dataset.id = glass.id;
+                glassEl.onclick = () => toggleGlassSelection(glass.id);
+                glassEl.ondblclick = () => selectInspiration(glass);
+
+                const typeConfig = GLASS_TYPES[glass.type] || GLASS_TYPES.mason;
+
+                glassEl.innerHTML = `
+                    <div class="selection-indicator">✓</div>
+                    <div class="glass-body">
+                        <div class="glass-liquid" style="height: ${glass.completion}%; --liquid-color: ${typeConfig.color};"></div>
+                    </div>
+                    <span class="glass-label">${glass.name}</span>
+                `;
+
+                container.appendChild(glassEl);
+            });
+
+            updateSelectionUI();
+        }
+
+        function toggleGlassSelection(id) {
+            if (state.selectedGlasses.has(id)) {
+                state.selectedGlasses.delete(id);
+            } else if (state.selectedGlasses.size < 3) {
+                state.selectedGlasses.add(id);
+            }
+            renderGlasses();
+        }
+
+        function updateSelectionUI() {
+            const count = state.selectedGlasses.size;
+            document.getElementById('selectedCount').textContent = `已选择: ${count}/3`;
+
+            const collisionBtn = document.getElementById('collisionBtn');
+            const startCollisionBtn = document.getElementById('startCollisionBtn');
+
+            if (collisionBtn) collisionBtn.disabled = count < 2;
+            if (startCollisionBtn) startCollisionBtn.disabled = count < 2;
+        }
+
+        function addGlass() {
+            const types = Object.keys(GLASS_TYPES);
+            const newGlass = {
+                id: Date.now(),
+                name: `新灵感 ${state.glasses.length + 1}`,
+                type: types[Math.floor(Math.random() * types.length)],
+                completion: Math.floor(Math.random() * 100),
+            };
+            state.glasses.push(newGlass);
+            renderGlasses();
+            addLog('新增灵感: ' + newGlass.name);
+        }
+
+        function selectInspiration(glass) {
+            state.currentInspiration = glass;
+            switchTab('brewing');
+            document.querySelectorAll('.tab')[1].click();
+
+            // 重置聊天
+            state.chatMessages = [];
+            state.currentStep = 0;
+            addChatMessage('assistant', '好的，我已经选择 "' + glass.name + '" 灵感。让我们开始完善它！');
+            addChatMessage('assistant', BREWING_STEPS[0]);
+        }
+
+        /* ============================================
+           调酒工作台
+           ============================================ */
+        function addChatMessage(role, content) {
+            const container = document.getElementById('chatMessages');
+            const messageEl = document.createElement('div');
+            messageEl.className = `chat-message ${role}`;
+            messageEl.innerHTML = `
+                <div class="message-role">${role === 'assistant' ? '🤔 调酒师' : '👤 你'}</div>
+                <div class="message-content">${content}</div>
+            `;
+            container.appendChild(messageEl);
+            container.scrollTop = container.scrollHeight;
+
+            state.chatMessages.push({ role, content });
+        }
+
+        async function sendMessage() {
+            if (!state.llmConnected) {
+                alert('请先配置并测试 LLM 连接');
+                return;
+            }
+
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            if (!message) return;
+
+            input.value = '';
+            addChatMessage('user', message);
+
+            // 添加打字指示器
+            const typingEl = document.createElement('div');
+            typingEl.className = 'chat-message assistant';
+            typingEl.id = 'typingIndicator';
+            typingEl.innerHTML = `
+                <div class="message-role">🤔 调酒师</div>
+                <div class="typing-indicator">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            `;
+            document.getElementById('chatMessages').appendChild(typingEl);
+
+            try {
+                const response = await callLLM({
+                    provider: document.getElementById('llmProvider').value,
+                    apiKey: document.getElementById('apiKey').value,
+                    baseUrl: document.getElementById('baseUrl').value || getDefaultBaseUrl(document.getElementById('llmProvider').value),
+                    model: document.getElementById('model').value,
+                    messages: [
+                        { role: 'system', content: '你是一位友好的灵感调酒师，通过对话帮助用户完善灵感。' },
+                        ...state.chatMessages.map(m => ({ role: m.role, content: m.content })),
+                    ],
+                    temperature: 0.8,
+                });
+
+                // 移除打字指示器
+                typingEl.remove();
+
+                if (response.success) {
+                    addChatMessage('assistant', response.content);
+
+                    // 更新进度
+                    state.currentStep = Math.min(state.currentStep + 1, BREWING_STEPS.length - 1);
+                    updateProgress();
+
+                    // 如果是最后一步，询问是否完成
+                    if (state.currentStep === BREWING_STEPS.length - 1) {
+                        setTimeout(() => {
+                            addChatMessage('assistant', '看起来你的灵感已经非常完整了！✨ 你可以继续完善，或者开始将它与其他灵感进行碰撞。');
+                        }, 1000);
+                    }
+                } else {
+                    throw new Error(response.error);
+                }
+            } catch (error) {
+                typingEl.remove();
+                addChatMessage('assistant', '抱歉，发生了错误: ' + error.message);
+            }
+        }
+
+        function updateProgress() {
+            const dots = document.querySelectorAll('.progress-dot');
+            const labels = document.querySelectorAll('.progress-label');
+
+            dots.forEach((dot, i) => {
+                dot.classList.remove('active', 'completed');
+                labels[i].classList.remove('active');
+
+                if (i < state.currentStep) {
+                    dot.classList.add('completed');
+                    dot.textContent = '✓';
+                } else if (i === state.currentStep) {
+                    dot.classList.add('active');
+                    labels[i].classList.add('active');
+                    dot.textContent = i + 1;
+                } else {
+                    dot.textContent = i + 1;
+                }
+            });
+        }
+
+        /* ============================================
+           灵感碰撞
+           ============================================ */
+        function startCollision() {
+            if (state.selectedGlasses.size < 2) {
+                alert('请至少选择 2 个灵感进行碰撞');
+                return;
+            }
+            switchTab('collision');
+            document.querySelectorAll('.tab')[2].click();
+            renderGlasses('collisionGlassContainer');
+        }
+
+        async function runCollisionAnimation() {
+            if (!state.llmConnected) {
+                alert('请先配置并测试 LLM 连接');
+                return;
+            }
+
+            // 切换到动画阶段
+            document.getElementById('collisionSelectPhase').classList.add('hidden');
+            document.getElementById('collisionAnimationPhase').classList.remove('hidden');
+
+            const selectedGlasses = state.glasses.filter(g => state.selectedGlasses.has(g.id));
+            const colors = selectedGlasses.map(g => GLASS_TYPES[g.type].color);
+
+            // 显示倒入的液体
+            const streamsContainer = document.getElementById('pourStreams');
+            streamsContainer.innerHTML = colors.map(color =>
+                `<div class="pour-stream" style="background: ${color};"></div>`
+            ).join('');
+
+            // 倒入动画
+            await new Promise(resolve => setTimeout(resolve, 500));
+            document.querySelectorAll('.pour-stream').forEach(el => el.classList.add('active'));
+            document.getElementById('animationText').textContent = '正在倒入液体...';
+
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // 摇晃动画
+            const shaker = document.getElementById('shaker');
+            const liquid = document.getElementById('shakerLiquid');
+            shaker.classList.remove('pouring');
+            shaker.classList.add('shaking');
+            document.getElementById('animationText').textContent = '正在摇晃混合...';
+
+            // 增加液体高度
+            liquid.style.height = '60%';
+
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            // 倒出动画
+            shaker.classList.remove('shaking');
+            shaker.classList.add('pouring-out');
+            liquid.style.height = '0%';
+            document.getElementById('animationText').textContent = '特调完成！';
+
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // 切换到配方阶段
+            document.getElementById('collisionAnimationPhase').classList.add('hidden');
+            document.getElementById('collisionRecipePhase').classList.remove('hidden');
+
+            // 生成配方
+            await generateRecipes(selectedGlasses);
+        }
+
+        async function generateRecipes(selectedGlasses) {
+            const contents = selectedGlasses.map(g => g.name).join(' + ');
+
+            try {
+                const response = await callLLM({
+                    provider: document.getElementById('llmProvider').value,
+                    apiKey: document.getElementById('apiKey').value,
+                    baseUrl: document.getElementById('baseUrl').value || getDefaultBaseUrl(document.getElementById('llmProvider').value),
+                    model: document.getElementById('model').value,
+                    messages: [
+                        {
+                            role: 'system',
+                            content: `你是一位创意调酒师，擅长将多个灵感融合成独特的创意方案。
+
+请为以下灵感融合生成 3 个创意方向。返回 JSON 格式：
+{
+  "recipes": [
+    {
+      "title": "方案标题",
+      "description": "详细描述",
+      "keywords": ["关键词1", "关键词2", "关键词3"],
+      "directions": ["方向1", "方向2"],
+      "score": 85
+    }
+  ]
+}`
+                        },
+                        {
+                            role: 'user',
+                            content: `灵感组合: ${contents}\n\n请生成 3 个独特的创意方向。`
+                        }
+                    ],
+                    temperature: 0.9,
+                });
+
+                if (response.success) {
+                    const jsonMatch = response.content.match(/\{[\s\S]*\}/);
+                    if (jsonMatch) {
+                        const data = JSON.parse(jsonMatch[0]);
+                        state.recipes = data.recipes || [];
+                    } else {
+                        throw new Error('无法解析配方数据');
+                    }
+                } else {
+                    throw new Error(response.error);
+                }
+            } catch (error) {
+                addLog('error', '配方生成失败: ' + error.message);
+                // 使用默认配方
+                state.recipes = [
+                    {
+                        title: '创意方案 A',
+                        description: '融合' + contents + '的独特创意',
+                        keywords: ['创意', '融合', '独特'],
+                        directions: ['深入发展', '跨界探索'],
+                        score: 85,
+                    },
+                    {
+                        title: '创意方案 B',
+                        description: '将' + contents + '转化为艺术表达',
+                        keywords: ['艺术', '表达', '转化'],
+                        directions: ['视觉呈现', '情感共鸣'],
+                        score: 78,
+                    },
+                    {
+                        title: '创意方案 C',
+                        description: '用' + contents + '讲述故事',
+                        keywords: ['叙事', '故事', '情感'],
+                        directions: ['短篇创作', '情节设计'],
+                        score: 82,
+                    },
+                ];
+            }
+
+            renderRecipes();
+        }
+
+        function renderRecipes() {
+            const grid = document.getElementById('recipeGrid');
+            grid.innerHTML = state.recipes.map((recipe, i) => `
+                <div class="recipe-card ${state.selectedRecipe === i ? 'selected' : ''}" onclick="selectRecipe(${i})">
+                    <div class="recipe-rank" style="position: absolute; top: 10px; right: 10px; font-size: 20px;">
+                        ${i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}
+                    </div>
+                    <div class="recipe-header">
+                        <div class="recipe-title">${recipe.title}</div>
+                        <div class="recipe-score">⭐ ${recipe.score}</div>
+                    </div>
+                    <div class="recipe-description">${recipe.description}</div>
+                    <div class="recipe-keywords">
+                        ${recipe.keywords.map(k => `<span class="keyword-tag">${k}</span>`).join('')}
+                    </div>
+                    <div class="recipe-directions">
+                        <h4>可能的方向：</h4>
+                        <ul>
+                            ${recipe.directions.map(d => `<li>${d}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('confirmRecipeBtn').disabled = true;
+        }
+
+        function selectRecipe(index) {
+            state.selectedRecipe = index;
+            renderRecipes();
+            document.getElementById('confirmRecipeBtn').disabled = false;
+        }
+
+        function confirmRecipe() {
+            if (state.selectedRecipe === null) return;
+
+            const recipe = state.recipes[state.selectedRecipe];
+            alert(`已确认方案: ${recipe.title}\n\n${recipe.description}`);
+
+            // 可以在这里添加创建新灵感的逻辑
+            addLog('success', `已创建特调: ${recipe.title}`);
+        }
+
+        function regenerateRecipes() {
+            const selectedGlasses = state.glasses.filter(g => state.selectedGlasses.has(g.id));
+            generateRecipes(selectedGlasses);
+        }
+
+        function skipAnimation() {
+            document.getElementById('collisionAnimationPhase').classList.add('hidden');
+            document.getElementById('collisionRecipePhase').classList.remove('hidden');
+            generateRecipes(state.glasses.filter(g => state.selectedGlasses.has(g.id)));
+        }
+
+        /* ============================================
+           测试场景
+           ============================================ */
+        async function runBrewingTest() {
+            if (!state.llmConnected) {
+                alert('请先配置并测试 LLM 连接');
+                return;
+            }
+
+            switchTab('brewing');
+            document.querySelectorAll('.tab')[1].click();
+
+            addChatMessage('assistant', '开始测试调酒对话...');
+
+            try {
+                const response = await callLLM({
+                    provider: document.getElementById('llmProvider').value,
+                    apiKey: document.getElementById('apiKey').value,
+                    baseUrl: document.getElementById('baseUrl').value || getDefaultBaseUrl(document.getElementById('llmProvider').value),
+                    model: document.getElementById('model').value,
+                    messages: [
+                        { role: 'system', content: '你是一位灵感调酒师。请问用户一个问题来帮助完善他们的灵感："下雨天路过一家老咖啡店，橱窗里暖黄的灯光"。' },
+                    ],
+                });
+
+                if (response.success) {
+                    addChatMessage('assistant', response.content);
+                }
+            } catch (error) {
+                addChatMessage('assistant', '测试失败: ' + error.message);
+            }
+        }
+
+        async function runScoringTest() {
+            if (!state.llmConnected) {
+                alert('请先配置并测试 LLM 连接');
+                return;
+            }
+
+            addLog('开始灵感评分测试...');
+
+            const inspiration = {
+                name: '测试灵感',
+                rawInput: { text: '下雨天路过一家老咖啡店，橱窗里暖黄的灯光' },
+                brewingLog: [
+                    { question: '这个场景让你想到什么？', answer: '像老电影里的场景' }
+                ],
+                structuredContent: {
+                    mood: '怀旧、温暖',
+                    keywords: ['咖啡店', '雨天', '灯光'],
+                    possibleDirections: ['插画', '短文']
+                },
+                completion: 50,
+            };
+
+            try {
+                const response = await callLLM({
+                    provider: document.getElementById('llmProvider').value,
+                    apiKey: document.getElementById('apiKey').value,
+                    baseUrl: document.getElementById('baseUrl').value || getDefaultBaseUrl(document.getElementById('llmProvider').value),
+                    model: document.getElementById('model').value,
+                    messages: [
+                        {
+                            role: 'system',
+                            content: `评估灵感的完整度，给出评分（0-100）和建议。
+
+评分维度：
+- 清晰度（30%）：核心想法是否明确
+- 丰富度（30%）：感官细节是否充足
+- 可行性（20%）：是否有落地方向
+- 独特性（20%）：是否有独特视角
+
+请返回 JSON 格式：
+{
+  "clarity": 75,
+  "richness": 60,
+  "feasibility": 70,
+  "uniqueness": 80,
+  "total": 71,
+  "suggestions": ["建议1", "建议2"]
+}`
+                        },
+                        { role: 'user', content: JSON.stringify(inspiration, null, 2) },
+                    ],
+                });
+
+                if (response.success) {
+                    addLog('success', '评分结果: ' + response.content);
+                }
+            } catch (error) {
+                addLog('error', '评分测试失败: ' + error.message);
+            }
+        }
+
+        async function runRecipeTest() {
+            if (!state.llmConnected) {
+                alert('请先配置并测试 LLM 连接');
+                return;
+            }
+
+            addLog('开始配方生成测试...');
+
+            try {
+                const response = await callLLM({
+                    provider: document.getElementById('llmProvider').value,
+                    apiKey: document.getElementById('apiKey').value,
+                    baseUrl: document.getElementById('baseUrl').value || getDefaultBaseUrl(document.getElementById('llmProvider').value),
+                    model: document.getElementById('model').value,
+                    messages: [
+                        {
+                            role: 'system',
+                            content: '你是一位创意调酒师。为以下灵感组合生成 3 个创意方向。返回 JSON 格式。'
+                        },
+                        {
+                            role: 'user',
+                            content: '灵感1: 下雨天路过一家老咖啡店，橱窗里暖黄的灯光\n灵感2: 雨天的爵士乐，老唱片的沙沙声'
+                        }
+                    ],
+                });
+
+                if (response.success) {
+                    addLog('success', '配方生成结果: ' + response.content);
+                }
+            } catch (error) {
+                addLog('error', '配方生成测试失败: ' + error.message);
+            }
+        }
+
+        async function runBrainstormTest() {
+            if (!state.llmConnected) {
+                alert('请先配置并测试 LLM 连接');
+                return;
+            }
+
+            addLog('开始头脑风暴测试...');
+
+            try {
+                const response = await callLLM({
+                    provider: document.getElementById('llmProvider').value,
+                    apiKey: document.getElementById('apiKey').value,
+                    baseUrl: document.getElementById('baseUrl').value || getDefaultBaseUrl(document.getElementById('llmProvider').value),
+                    model: document.getElementById('model').value,
+                    messages: [
+                        {
+                            role: 'system',
+                            content: `你是一个头脑风暴助手。根据用户输入的灵感，生成 5 个相关的创意卡片。
+
+每个卡片包含：
+- 主题词
+- 简要描述
+- 相关联想
+
+返回 JSON 格式：
+{
+  "cards": [
+    {
+      "theme": "主题",
+      "description": "描述",
+      "associations": ["联想1", "联想2"]
+    }
+  ]
+}`
+                        },
+                        {
+                            role: 'user',
+                            content: '灵感: "咖啡店让我想到 rainy day + 老爵士乐"'
+                        }
+                    ],
+                });
+
+                if (response.success) {
+                    addLog('success', '头脑风暴结果: ' + response.content);
+                }
+            } catch (error) {
+                addLog('error', '头脑风暴测试失败: ' + error.message);
+            }
+        }
+
+        /* ============================================
+           初始化
+           ============================================ */
+        document.addEventListener('DOMContentLoaded', () => {
+            loadConfig();
+            initGlasses();
+            addLog('HTML 演示已初始化');
+        });
+    </script>
+</body>
+</html>
