@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>灵感调酒师 - 提示词生成器</title>
+    <style>
+        :root {
+            --primary: #D4A017;
+            --bg-dark: #1a1410;
+            --bg-surface: #2a201a;
+            --text: #E8E8E8;
+            --text-secondary: #A8A8A8;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary);
+            margin-bottom: 30px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .panel {
+            background: var(--bg-surface);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .panel-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .option-group {
+            margin-bottom: 16px;
+        }
+
+        .option-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        select, button {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            background: rgba(0,0,0,0.3);
+            color: var(--text);
+            font-size: 14px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        button {
+            background: var(--primary);
+            color: #000;
+            font-weight: 500;
+            border: none;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: #e6b020;
+            transform: translateY(-1px);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-group button {
+            flex: 1;
+        }
+
+        .prompt-output {
+            background: #000;
+            border-radius: 8px;
+            padding: 16px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 13px;
+            line-height: 1.8;
+            min-height: 200px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .prompt-preview {
+            margin-top: 20px;
+            padding: 20px;
+            background: linear-gradient(135deg, rgba(212, 160, 23, 0.1) 0%, rgba(255, 140, 66, 0.1) 100%);
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .glass-preview {
+            font-size: 80px;
+            margin-bottom: 10px;
+        }
+
+        .glass-info {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .copy-btn {
+            margin-top: 10px;
+        }
+
+        .tips {
+            background: rgba(212, 160, 23, 0.1);
+            border-left: 4px solid var(--primary);
+            padding: 16px;
+            border-radius: 0 8px 8px 0;
+            margin-top: 20px;
+        }
+
+        .tips h3 {
+            color: var(--primary);
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .tips ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .tips li {
+            margin-bottom: 8px;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .tips li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: var(--primary);
+        }
+
+        .color-preview {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            vertical-align: middle;
+            margin-right: 8px;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍸 灵感调酒师 - 提示词生成器</h1>
+
+        <div class="grid">
+            <!-- 左栏：选项 -->
+            <div class="panel">
+                <div class="panel-title">🎯 素材配置</div>
+
+                <div class="option-group">
+                    <label class="option-label">杯子类型</label>
+                    <select id="glassType">
+                        <option value="brandy">🥃 白兰地杯</option>
+                        <option value="champagne">🍾 香槟杯</option>
+                        <option value="wine">🍷 红酒杯</option>
+                        <option value="cocktail">🥃 古典杯</option>
+                        <option value="beaker">🧪 烧杯</option>
+                        <option value="mason">🫙 梅森罐</option>
+                        <option value="flask">🧬 锥形瓶</option>
+                        <option value="martini">🍹 马天尼杯</option>
+                    </select>
+                </div>
+
+                <div class="option-group">
+                    <label class="option-label">完成度</label>
+                    <select id="completion">
+                        <option value="0">🌱 0% - 空杯</option>
+                        <option value="25">💧 25% - 萌芽</option>
+                        <option value="50">🌿 50% - 生长</option>
+                        <option value="75">🌸 75% - 含苞</option>
+                        <option value="100">✨ 100% - 绽放</option>
+                    </select>
+                </div>
+
+                <div class="option-group">
+                    <label class="option-label">装饰元素（可选）</label>
+                    <select id="decoration">
+                        <option value="none">无装饰</option>
+                        <option value="lemon">🍋 柠檬片</option>
+                        <option value="mint">🌿 薄荷叶</option>
+                        <option value="ice">🧊 透明冰块</option>
+                        <option value="cherry">🍒 樱桃</option>
+                        <option value="olive">🫒 橄榄</option>
+                        <option value="light">💡 光线折射</option>
+                        <option value="bubbles">✨ 气泡上升</option>
+                    </select>
+                </div>
+
+                <div class="option-group">
+                    <label class="option-label">光影效果</label>
+                    <select id="lighting">
+                        <option value="top">顶光照射</option>
+                        <option value="side">侧光照射</option>
+                        <option value="back">背光照射</option>
+                        <option value="glow">底光折射</option>
+                    </select>
+                </div>
+
+                <div class="btn-group">
+                    <button onclick="generatePrompt()">🔄 生成提示词</button>
+                    <button onclick="copyPrompt()" class="copy-btn">📋 复制提示词</button>
+                </div>
+            </div>
+
+            <!-- 右栏：预览和输出 -->
+            <div class="panel">
+                <div class="panel-title">📝 生成的提示词</div>
+                
+                <div class="prompt-output" id="promptOutput">
+                    选择配置后点击"生成提示词"开始...
+                </div>
+
+                <div class="prompt-preview" id="promptPreview">
+                    <div class="glass-preview" id="glassEmoji">🥃</div>
+                    <div class="glass-info" id="glassInfo">白兰地杯 · 0%</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 批量生成 -->
+        <div class="panel">
+            <div class="panel-title">📦 批量生成</div>
+            
+            <div class="btn-group" style="flex-wrap: wrap;">
+                <button onclick="batchGenerate('all')">🎯 生成全部（40张）</button>
+                <button onclick="batchGenerate('byType')">🥃 按杯子类型</button>
+                <button onclick="batchGenerate('byStatus')">📊 按完成度</button>
+                <button onclick="downloadList()">📥 下载提示词列表</button>
+            </div>
+
+            <div id="batchProgress" style="margin-top: 16px;"></div>
+        </div>
+
+        <!-- 使用提示 -->
+        <div class="tips">
+            <h3>💡 使用指南</h3>
+            <ul>
+                <li>选择杯子类型和完成度，系统自动生成完整提示词</li>
+                <li>提示词包含固定风格 + 可变元素，确保统一性</li>
+                <li>复制提示词后，在 Midjourney、DALL-E 或 Stable Diffusion 中使用</li>
+                <li>建议使用 Midjourney 的 --ar 1:1 --v 6 --style raw 参数</li>
+                <li>生成后建议使用 RemoveBG 等工具去除背景</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        /* ============================================
+           提示词配置数据
+           ============================================ */
+        const config = {
+            basePrompt: `深夜酒吧场景，暖黄色聚光灯从上向下照射，木质吧台背景（轻微虚化），玻璃杯表面有精致的高光和反射`,
+
+            endingPrompt: `摄影作品，高细节，8K分辨率，专业灯光设置，景深效果，柔和阴影，温暖氛围，精致美学，移动应用界面素材，透明PNG背景`,
+
+            glasses: {
+                brandy: {
+                    name: '白兰地杯',
+                    emoji: '🥃',
+                    prompt: '矮胖圆形白兰地杯，宽口设计，厚实杯壁，古典欧洲风格，杯身有精致的切割纹路，手工吹制玻璃质感'
+                },
+                champagne: {
+                    name: '香槟杯',
+                    emoji: '🍾',
+                    prompt: '细长香槟杯，高脚设计，杯身细长优雅，杯口略微收窄，杯壁轻薄透明'
+                },
+                wine: {
+                    name: '红酒杯',
+                    emoji: '🍷',
+                    prompt: '经典波尔多红酒杯，球形杯身，适度高度，杯口略向外张开，适合醒酒'
+                },
+                cocktail: {
+                    name: '古典杯',
+                    emoji: '🥃',
+                    prompt: '古典威士忌杯，方形底部，老式美国酒吧风格，杯壁厚实'
+                },
+                beaker: {
+                    name: '烧杯',
+                    emoji: '🧪',
+                    prompt: '圆底烧瓶，实验室玻璃器皿风格，刻度线细节，橡胶塞封口'
+                },
+                mason: {
+                    name: '梅森罐',
+                    emoji: '🫙',
+                    prompt: '复古梅森罐，玻璃罐身金属盖子，美国乡村风格，农舍美学'
+                },
+                flask: {
+                    name: '锥形瓶',
+                    emoji: '🧬',
+                    prompt: '化学锥形瓶，底部宽顶部窄，实验室风格，刻度线'
+                },
+                martini: {
+                    name: '马天尼杯',
+                    emoji: '🍹',
+                    prompt: '经典马天尼杯，三角形杯身，细长高脚，极其优雅'
+                }
+            },
+
+            liquids: {
+                brandy: { color: '#1E3A5F', name: '钴蓝色', effect: '深邃神秘金属光泽' },
+                champagne: { color: '#9B59B6', name: '淡紫色', effect: '梦幻浪漫气泡丰富' },
+                wine: { color: '#8B0000', name: '深红色', effect: '古典优雅挂杯效果' },
+                cocktail: { color: '#D4A017', name: '琥珀色', effect: '专业稳重冰块漂浮' },
+                beaker: { color: '#00FF7F', name: '荧光绿', effect: '科技未来发光效果' },
+                mason: { color: '#FF8C00', name: '暖橙色', effect: '温馨亲切柠檬装饰' },
+                flask: { color: '#87CEEB', name: '透明微蓝', effect: '纯净清新晶体感' },
+                martini: { color: '#C0C0C0', name: '彩虹渐变', effect: '多彩融合分层效果' }
+            },
+
+            completions: {
+                0: { name: '空杯', emoji: '🌱', prompt: '空杯状态，完全透明，内部干净，高光清晰，无液体' },
+                25: { name: '1/4', emoji: '💧', prompt: '1/4 液位，液面平静，与空气有明显分界线，清澈透明' },
+                50: { name: '1/2', emoji: '🌿', prompt: '1/2 液位，轻微液波，光线折射变化，微微涟漪' },
+                75: { name: '3/4', emoji: '🌸', prompt: '3/4 液位，液面波动，有明显涟漪效果，层次丰富' },
+                100: { name: '满杯', emoji: '✨', prompt: '满杯状态，液面张力感，近看有弧度，表面有光泽' }
+            },
+
+            decorations: {
+                none: '',
+                lemon: '杯口有柠檬片装饰，精致点缀',
+                mint: '薄荷叶点缀，绿色清新',
+                ice: '透明冰块漂浮其中，冰块中有细小气泡，光线折射',
+                cherry: '樱桃装饰，红色点缀经典',
+                olive: '橄榄装饰，绿色经典',
+                light: '杯壁上有光线折射效果，形成彩虹效果',
+                bubbles: '细腻气泡缓慢上升，气泡簇群组效果'
+            },
+
+            lightings: {
+                top: '暖黄色顶光从上向下照射',
+                side: '侧光照射，形成明暗对比',
+                back: '背光照射，形成轮廓光',
+                glow: '底光折射，温暖光晕效果'
+            }
+        };
+
+        /* ============================================
+           生成函数
+           ============================================ */
+        function generatePrompt() {
+            const glassType = document.getElementById('glassType').value;
+            const completion = document.getElementById('completion').value;
+            const decoration = document.getElementById('decoration').value;
+            const lighting = document.getElementById('lighting').value;
+
+            const glass = config.glasses[glassType];
+            const liquid = config.liquids[glassType];
+            const completionData = config.completions[completion];
+            const decorationText = config.decorations[decoration];
+            const lightingText = config.lightings[lighting];
+
+            // 构建提示词
+            const parts = [
+                config.basePrompt,
+                glass.prompt,
+                `杯中有${liquid.name}${liquid.effect}酒液，${completionData.prompt}`,
+                decorationText,
+                lightingText,
+                config.endingPrompt
+            ].filter(Boolean);
+
+            const prompt = parts.join('，');
+
+            // 更新输出
+            document.getElementById('promptOutput').textContent = prompt;
+
+            // 更新预览
+            document.getElementById('glassEmoji').textContent = glass.emoji;
+            document.getElementById('glassInfo').textContent = `${glass.name} · ${completionData.emoji} ${completionData.name}`;
+
+            return prompt;
+        }
+
+        function copyPrompt() {
+            const prompt = document.getElementById('promptOutput').textContent;
+            if (!prompt || prompt.includes('选择配置')) {
+                alert('请先生成提示词');
+                return;
+            }
+
+            navigator.clipboard.writeText(prompt).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                const originalText = btn.textContent;
+                btn.textContent = '✅ 已复制！';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                }, 2000);
+            });
+        }
+
+        /* ============================================
+           批量生成
+           ============================================ */
+        function batchGenerate(mode) {
+            let prompts = [];
+
+            if (mode === 'all') {
+                // 生成全部 40 张
+                for (const glassType of Object.keys(config.glasses)) {
+                    for (const completion of Object.keys(config.completions)) {
+                        prompts.push(generateSinglePrompt(glassType, completion));
+                    }
+                }
+            } else if (mode === 'byType') {
+                // 按类型生成（每种杯子 5 个状态）
+                const glassType = prompt('输入杯子类型（brandy/champagne/wine/cocktail/beaker/mason/flask/martini）：', 'brandy');
+                if (glassType && config.glasses[glassType]) {
+                    for (const completion of Object.keys(config.completions)) {
+                        prompts.push(generateSinglePrompt(glassType, completion));
+                    }
+                }
+            } else if (mode === 'byStatus') {
+                // 按完成度生成（每种状态 8 个杯子）
+                const completion = prompt('输入完成度（0/25/50/75/100）：', '100');
+                if (completion && config.completions[completion]) {
+                    for (const glassType of Object.keys(config.glasses)) {
+                        prompts.push(generateSinglePrompt(glassType, completion));
+                    }
+                }
+            }
+
+            if (prompts.length > 0) {
+                showBatchProgress(prompts);
+            }
+        }
+
+        function generateSinglePrompt(glassType, completion) {
+            const glass = config.glasses[glassType];
+            const liquid = config.liquids[glassType];
+            const completionData = config.completions[completion];
+
+            const parts = [
+                config.basePrompt,
+                glass.prompt,
+                `杯中有${liquid.name}${liquid.effect}酒液，${completionData.prompt}`,
+                config.endingPrompt
+            ];
+
+            return {
+                filename: `${glassType}_${completion}.txt`,
+                prompt: parts.join('，'),
+                glassType: glassType,
+                completion: completion,
+                glassName: glass.name,
+                emoji: glass.emoji
+            };
+        }
+
+        function showBatchProgress(prompts) {
+            const container = document.getElementById('batchProgress');
+            container.innerHTML = `
+                <div style="margin-bottom: 10px;">
+                    共 ${prompts.length} 个提示词
+                </div>
+                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    ${prompts.map(p => `
+                        <span style="
+                            background: rgba(0,0,0,0.3);
+                            padding: 6px 12px;
+                            border-radius: 16px;
+                            font-size: 12px;
+                            cursor: pointer;
+                            transition: background 0.2s;
+                        "
+                        onmouseover="this.style.background='rgba(212,160,23,0.3)'"
+                        onmouseout="this.style.background='rgba(0,0,0,0.3)'"
+                        onclick="copySinglePrompt('${p.filename}', '${p.prompt.replace(/'/g, "\\'")}')"
+                        title="点击复制">
+                            ${p.emoji} ${p.glassName} ${p.completion}%
+                        </span>
+                    `).join('')}
+                </div>
+                <div style="margin-top: 12px; font-size: 12px; color: var(--text-secondary);">
+                    点击任意标签可复制对应提示词
+                </div>
+            `;
+        }
+
+        function copySinglePrompt(filename, prompt) {
+            navigator.clipboard.writeText(prompt).then(() => {
+                showToast(`已复制: ${filename}`);
+            });
+        }
+
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.textContent = message;
+            toast.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: #4CAF50;
+                color: white;
+                padding: 12px 24px;
+                border-radius: 8px;
+                font-size: 14px;
+                z-index: 1000;
+                animation: fadeIn 0.3s;
+            `;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 2000);
+        }
+
+        function downloadList() {
+            const prompts = [];
+            for (const glassType of Object.keys(config.glasses)) {
+                for (const completion of Object.keys(config.completions)) {
+                    prompts.push(generateSinglePrompt(glassType, completion));
+                }
+            }
+
+            const content = prompts.map(p => 
+                `[${p.glassName} - ${p.completion}%]\n${p.prompt}\n`
+            ).join('\n---\n\n');
+
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '灵感调酒师-提示词列表.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        /* ============================================
+           初始化
+           ============================================ */
+        document.addEventListener('DOMContentLoaded', () => {
+            generatePrompt();
+        });
+    </script>
+</body>
+</html>
