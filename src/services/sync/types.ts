@@ -78,4 +78,43 @@ export interface SyncEventCallbacks {
   onDeviceDiscovered?: (device: SyncDevice) => void;
   onSyncComplete?: (result: SyncResponse) => void;
   onError?: (error: Error) => void;
+  onSyncStatusChanged?: (status: SyncStatus) => void;
+}
+
+export interface SyncTask {
+  id: string;
+  inspirationId: string;
+  targetDeviceId: string;
+  status: 'pending' | 'syncing' | 'completed' | 'failed';
+  retryCount: number;
+  maxRetries: number;
+  nextRetryTime: string | null;
+  createdAt: string;
+  updatedAt: string;
+  error: string | null;
+}
+
+export interface SyncStatus {
+  lastSyncTime: string | null;
+  pendingTasks: number;
+  failedTasks: number;
+  syncingTasks: number;
+  completedTasks: number;
+}
+
+export interface SyncHistory {
+  id: number;
+  inspirationId: string;
+  sourceDevice: string;
+  targetDevice: string;
+  status: string;
+  timestamp: string;
+  durationMs: number;
+}
+
+export interface SyncDeviceEnhanced extends SyncDevice {
+  healthStatus: 'online' | 'offline' | 'unhealthy';
+  responseTime: number;
+  lastSyncSuccess: string | null;
+  syncFailureCount: number;
 }
