@@ -37,7 +37,8 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Generate native project
-        run: npx expo prebuild --platform android --clean --no-install
+        run: |
+          npx expo prebuild --platform android --clean --no-install --verbose 2>&1 | head -100
 
       - name: Build Debug APK
         run: |
@@ -82,7 +83,8 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Generate native project
-        run: npx expo prebuild --platform android --clean --no-install
+        run: |
+          npx expo prebuild --platform android --clean --no-install --verbose 2>&1 | head -100
 
       - name: Create keystore for release
         env:
