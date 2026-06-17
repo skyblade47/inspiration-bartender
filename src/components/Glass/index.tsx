@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { memo } from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import Animated, { 
   useAnimatedStyle, 
@@ -17,7 +17,7 @@ interface GlassProps {
   onLongPress?: () => void;
 }
 
-export const Glass: React.FC<GlassProps> = ({
+const GlassComponent: React.FC<GlassProps> = ({
   type,
   completion,
   status,
@@ -124,3 +124,6 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
 });
+
+// 使用 memo 优化，避免不必要的重渲染
+export const Glass = memo(GlassComponent);

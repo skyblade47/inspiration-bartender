@@ -44,15 +44,33 @@ export interface ChatResponse {
   finishReason?: string;
 }
 
+// Anthropic 响应内容类型
+interface AnthropicContentBlock {
+  type: string;
+  text: string;
+}
+
+interface AnthropicResponse {
+  content: AnthropicContentBlock[] | string;
+  usage?: {
+    input_tokens: number;
+    output_tokens: number;
+  };
+  stop_reason?: string;
+}
+
+interface AnthropicStreamDelta {
+  type: string;
+  delta?: {
+    text: string;
+  };
+}
+
 // LLM 提供商接口
 export interface ILLMProvider {
   chat(request: ChatRequest): Promise<ChatResponse>;
   chatStream?(request: ChatRequest, onChunk: (chunk: string) => void): Promise<void>;
 }
-
-/**
- * OpenAI 提供商实现
- */
 class OpenAIProvider implements ILLMProvider {
   private config: OpenAIConfig;
 
@@ -204,11 +222,10 @@ class AnthropicProvider implements ILLMProvider {
       throw new Error(`Anthropic API 错误: ${response.status} - ${error}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as AnthropicResponse;
     
-    // Anthropic 响应格式不同
     const content = Array.isArray(data.content)
-      ? data.content.map((c: any) => c.text).join('')
+      ? data.content.map((c) => c.text).join('')
       : data.content;
 
     return {
@@ -395,13 +412,13 @@ class OllamaProvider implements ILLMProvider {
 export function createProvider(config: LLMConfig): ILLMProvider {
   switch (config.provider) {
     case LLMProvider.OPENAI:
-      return new OpenAIProvider(config as OpenAIConfig);
+      return new OpenAIProvider(config);
     case LLMProvider.ANTHROPIC:
-      return new AnthropicProvider(config as AnthropicConfig);
+      return new AnthropicProvider(config);
     case LLMProvider.OLLAMA:
-      return new OllamaProvider(config as OllamaConfig);
+      return new OllamaProvider(config);
     default:
-      throw new Error(`不支持的 LLM 提供商: ${(config as any).provider}`);
+      throw new Error('不支持的 LLM 提供商');
   }
 }
 

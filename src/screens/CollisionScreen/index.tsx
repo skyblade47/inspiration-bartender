@@ -10,11 +10,15 @@ import { ShakeAnimation } from './ShakeAnimation';
 import { RecipeCard } from './RecipeCard';
 import { barColors } from '../../constants/theme';
 import { ShakePhase, MixType } from '../../types';
+import { initConfigDatabase, initLLMService, MessageRole } from '../../services/llm';
+import { parseJsonFromLLMResponse } from '../../utils';
 
 type CollisionScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Collision'>;
 type CollisionScreenRouteProp = RouteProp<RootStackParamList, 'Collision'>;
 
-// 模拟生成配方
+// TODO: [Phase 3] 模拟生成配方 - 临时占位实现（v1.1 已接入 LLM）
+// 注：此为 Phase 3 "灵感碰撞" 的占位代码，保留作为 LLM 失败时的回退
+// 参考设计文档：docs/specs/collision-system.md
 const generateMockRecipes = (count: number): Recipe[] => {
   const titles = [
     '跨界融合创作方案',
@@ -24,14 +28,14 @@ const generateMockRecipes = (count: number): Recipe[] => {
     '内容创作新思路',
     '品牌联动营销方案',
   ];
-  
+
   const descriptions = [
-    '将不同领域的灵感元素进行有机融合，创造出独特且富有创意的解决方案。通过打破传统思维边界，实现意想不到的协同效应。',
-    '深挖用户情感需求，通过共鸣点建立深层次的连接。让创意不仅仅是表面的吸引，而是触动人心的体验。',
-    '聚焦技术创新，寻找突破传统局限的方法。利用最新技术手段，为创意提供更强大的支撑和可能性。',
-    '从用户视角出发，优化每一个接触点的体验。让创意方案不仅好听好看，更要好用易用。',
-    '探索内容创作的新形式和新表达。通过独特的叙事方式和呈现手法，让信息传递更加有效。',
-    '整合多个品牌资源，创造跨界合作机会。通过强强联合，实现影响力的叠加和扩展。',
+    '将不同领域的灵感元素进行有机融合，创造出独特且富有创意的解决方案。',
+    '深挖用户情感需求，通过共鸣点建立深层次的连接。',
+    '聚焦技术创新，寻找突破传统局限的方法。',
+    '从用户视角出发，优化每一个接触点的体验。',
+    '探索内容创作的新形式和新表达。',
+    '整合多个品牌资源，创造跨界合作机会。',
   ];
 
   const keywords = [
@@ -59,7 +63,7 @@ const generateMockRecipes = (count: number): Recipe[] => {
   }));
 };
 
-// 模拟混合结果
+// 模拟混合结果（LLM 失败时使用）
 const generateMockMixedResult = (): MixedResult => ({
   mixedColor: '#9B59B6',
   mixType: MixType.BLEND,
@@ -67,6 +71,93 @@ const generateMockMixedResult = (): MixedResult => ({
   moods: ['活跃', '期待', '兴奋'],
   combinedContent: '多种灵感元素正在融合碰撞，产生全新的创意火花...',
 });
+
+/**
+ * 使用 LLM 生成碰撞结果
+ * 失败时回退到模拟数据
+ */
+async function generateLLMResult(
+  selectedInspirations: Inspiration[],
+  completeCollision: (result: MixedResult, recipes: Recipe[]) => void
+) {
+  try {
+    await initConfigDatabase();
+    const llmService = await initLLMService();
+
+    if (!llmService) {
+      completeCollision(generateMockMixedResult(), generateMockRecipes(3));
+      return;
+    }
+
+    const inspirationDescriptions = selectedInspirations
+      .map(i => `- ${i.name}: ${i.rawInput?.text || i.name}`)
+      .join('\n');
+
+    const mixResponse = await llmService.chat({
+      messages: [
+        {
+          role: MessageRole.SYSTEM,
+          content: '你是一位富有创意的灵感调酒师。根据用户提供的多个灵感，生成一个融合结果。',
+        },
+        {
+          role: MessageRole.USER,
+          content: `请基于以下灵感生成融合结果，返回 JSON 格式：\n${inspirationDescriptions}\n\n返回格式：\n{"keywords": ["关键词1", "关键词2", ...], "moods": ["情绪1", "情绪2"], "combinedContent": "融合后的内容描述"}`,
+        },
+      ],
+      maxTokens: 300,
+    });
+
+    const parsedMix = parseJsonFromLLMResponse<{ keywords?: string[]; moods?: string[]; combinedContent?: string }>(
+      mixResponse.content,
+      { keywords: [], moods: [], combinedContent: '' }
+    );
+
+    const mixedResult: MixedResult = {
+      mixedColor: '#9B59B6',
+      mixType: MixType.BLEND,
+      keywords: parsedMix.keywords || ['创新', '融合'],
+      moods: parsedMix.moods || ['活跃', '期待'],
+      combinedContent: parsedMix.combinedContent || '多种灵感元素正在融合碰撞...',
+    };
+
+    const recipeResponse = await llmService.chat({
+      messages: [
+        {
+          role: MessageRole.SYSTEM,
+          content: '你是一位富有创意的灵感调酒师。基于灵感融合结果，生成 3 个创意配方方案。',
+        },
+        {
+          role: MessageRole.USER,
+          content: `基于融合关键词：${mixedResult.keywords.join('、')}，生成 3 个配方方案。\n\n返回 JSON 格式：\n{"recipes": [{"title": "标题", "description": "描述", "keywords": ["k1", "k2"], "directions": ["步骤1", "步骤2", "步骤3"]}]}`,
+        },
+      ],
+      maxTokens: 800,
+    });
+
+    const parsedRecipes = parseJsonFromLLMResponse<{ recipes?: Array<{ title?: string; description?: string; keywords?: string[]; directions?: string[] }> }>(
+      recipeResponse.content,
+      { recipes: [] }
+    );
+
+    let recipes: Recipe[] = (parsedRecipes.recipes || []).map((r, i) => ({
+      id: `recipe-${i}-${Date.now()}`,
+      title: r.title || `方案 ${i + 1}`,
+      description: r.description || '',
+      keywords: r.keywords || [],
+      directions: r.directions || [],
+      score: 70 + Math.floor(Math.random() * 30),
+    }));
+
+    if (recipes.length === 0) {
+      recipes = generateMockRecipes(3);
+    }
+
+    completeCollision(mixedResult, recipes);
+  } catch (error) {
+    console.error('LLM 碰撞生成失败:', error);
+    completeCollision(generateMockMixedResult(), generateMockRecipes(3));
+  }
+}
 
 export const CollisionScreen: React.FC = () => {
   const navigation = useNavigation<CollisionScreenNavigationProp>();
@@ -109,13 +200,13 @@ export const CollisionScreen: React.FC = () => {
 
     const runAnimation = () => {
       const phases: ShakePhase[] = [ShakePhase.POUR, ShakePhase.SHAKE, ShakePhase.POUR_OUT];
-      let phaseIndex = 0;
       const phaseDuration = [2000, 3000, 1500];
+      const startTime = Date.now();
 
       const animate = () => {
         const elapsed = Date.now() - startTime;
         let totalElapsed = 0;
-        
+
         for (let i = 0; i < phaseDuration.length; i++) {
           totalElapsed += phaseDuration[i];
           if (elapsed < totalElapsed) {
@@ -131,14 +222,11 @@ export const CollisionScreen: React.FC = () => {
         if (elapsed < phaseDuration.reduce((a, b) => a + b, 0)) {
           timer = setTimeout(animate, 16);
         } else {
-          // 动画完成
-          const mixedResult = generateMockMixedResult();
-          const generatedRecipes = generateMockRecipes(3);
-          completeCollision(mixedResult, generatedRecipes);
+          // 动画完成 - 接入真实 LLM 生成混合结果和配方
+          generateLLMResult(selectedInspirations, completeCollision);
         }
       };
 
-      const startTime = Date.now();
       animate();
     };
 
@@ -147,7 +235,7 @@ export const CollisionScreen: React.FC = () => {
     return () => {
       if (timer) clearTimeout(timer);
     };
-  }, [phase, updateShakeAnimation, completeCollision]);
+  }, [phase, updateShakeAnimation, completeCollision, selectedInspirations]);
 
   // 返回吧台
   const handleBack = useCallback(() => {

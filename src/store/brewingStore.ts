@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { GlassType, InspirationStatus } from '../types';
+import { generateId } from '../utils/generate-id';
+import { initConfigDatabase, initLLMService, createBrewingService } from '../services/llm';
 
 // 对话消息类型
 export interface ChatMessage {
@@ -83,9 +85,6 @@ interface BrewingStore {
   reset: () => void;
 }
 
-// 生成唯一ID
-const generateId = () => Math.random().toString(36).substring(2, 9);
-
 // 初始状态
 const initialState = {
   inspirationId: null,
@@ -160,30 +159,50 @@ export const useBrewingStore = create<BrewingStore>((set, get) => ({
 
   // 提交用户输入
   submitUserInput: async () => {
-    const { userInput, addMessage, setTyping, isProcessing } = get();
+    const { userInput, addMessage, setTyping, isProcessing, name, status, messages } = get();
     if (!userInput.trim() || isProcessing) return;
 
     // 添加用户消息
     addMessage('user', userInput);
     set({ userInput: '', isProcessing: true });
 
-    // 模拟AI响应
     setTyping(true);
-    
-    // 这里后续会接入实际的AI服务
-    // 目前使用模拟响应
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    const responses = [
-      '这是一个很有趣的想法！让我帮您进一步探索...',
-      '我感受到了您灵感的核心，让我们继续深化它...',
-      '这个角度很独特，我来为您调配一下...',
-    ];
-    const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-    
-    addMessage('assistant', randomResponse);
-    setTyping(false);
-    set({ isProcessing: false });
+
+    try {
+      await initConfigDatabase();
+      const llmService = await initLLMService();
+
+      if (!llmService) {
+        addMessage('assistant', '请先在设置中配置 LLM 服务以启用 AI 对话功能。');
+        return;
+      }
+
+      const brewingService = createBrewingService(llmService);
+
+      const conversationHistory = messages
+        .slice(-5)
+        .map(m => `${m.role === 'user' ? '用户' : '助手'}: ${m.content}`)
+        .join('\n');
+
+      const response = await brewingService.continueBrewing(
+        userInput,
+        name || '未命名灵感',
+        status,
+        conversationHistory
+      );
+
+      addMessage('assistant', response);
+    } catch (error) {
+      const message = error instanceof Error 
+        ? error.message.includes('API') || error.message.includes('Network')
+          ? '网络或服务暂时不可用，请稍后重试。'
+          : `服务调用失败，请检查网络连接。`
+        : '服务调用失败，请稍后重试。';
+      addMessage('assistant', message);
+    } finally {
+      setTyping(false);
+      set({ isProcessing: false });
+    }
   },
 
   // 添加液体层

@@ -24,3 +24,19 @@ export {
   evaluateInspiration,
   quickEvaluateInspiration,
 } from './evaluator';
+
+// 导出缓存相关
+export {
+  ScoringCacheManager,
+  scoringCache,
+} from './cache';
+
+// 导出混合评分相关
+export {
+  DeepScoringResult,
+  LLMScoringConfig,
+  HybridScoringService,
+  hybridScoringService,
+  quickScoreInspiration,
+  deepScoreInspiration,
+} from './hybrid';

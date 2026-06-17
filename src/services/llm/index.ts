@@ -53,7 +53,8 @@ export {
 // 评分 Prompt
 export {
   ScoringPromptVars,
-  ScoringResult,
+  LLMParsedScoringResult,
+  LocalDimensionScores,
   SCORING_SYSTEM_PROMPT,
   BASE_SCORING_PROMPT,
   QUICK_SCORING_PROMPT,
@@ -67,6 +68,7 @@ export {
   parseScoringResult,
   buildScoringMessages,
   calculateWeightedScore,
+  convertLLMToLocalDimensions,
 } from './prompts/scoring';
 
 // 导入类型和类用于便捷使用
@@ -218,7 +220,7 @@ export class ScoringService {
     inspirationName: string,
     inspirationDescription?: string,
     brewingLog?: string
-  ): Promise<import('./prompts/scoring').ScoringResult> {
+  ): Promise<import('./prompts/scoring').LLMParsedScoringResult> {
     const prompt = createBaseScoringPrompt({
       inspirationName,
       inspirationDescription,
@@ -238,7 +240,7 @@ export class ScoringService {
     brewingLog: string,
     dimensions?: string,
     criteria?: string
-  ): Promise<import('./prompts/scoring').ScoringResult> {
+  ): Promise<import('./prompts/scoring').LLMParsedScoringResult> {
     const prompt = createDetailedScoringPrompt({
       inspirationName,
       inspirationDescription,
@@ -257,7 +259,7 @@ export class ScoringService {
   async quickScore(
     inspirationName: string,
     inspirationDescription?: string
-  ): Promise<import('./prompts/scoring').ScoringResult> {
+  ): Promise<import('./prompts/scoring').LLMParsedScoringResult> {
     const prompt = createQuickScoringPrompt({
       inspirationName,
       inspirationDescription,

@@ -1,18 +1,75 @@
-import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView, Text, TouchableOpacity } from 'react-native';
-import { FAB, ActivityIndicator, Portal, Snackbar, Button } from 'react-native-paper';
+import React, { useEffect, useState, useCallback, memo } from 'react';
+import { View, StyleSheet, FlatList, Text, TouchableOpacity } from 'react-native';
+import { FAB, ActivityIndicator, Portal, Snackbar, Button, IconButton, Menu } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../types';
+import { RootStackParamList, Inspiration } from '../../types';
 import { useInspirationStore } from '../../store/inspirationStore';
 import { Glass } from '../../components/Glass';
 import { barColors } from '../../constants/theme';
 
 type BarScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Bar'>;
 
+// 灵感卡片组件（memo 优化）
+interface InspirationCardProps {
+  inspiration: Inspiration;
+  isSelectionMode: boolean;
+  isSelected: boolean;
+  onPress: (id: string) => void;
+  onLongPress: (id: string) => void;
+}
+
+const InspirationCard = memo(({ 
+  inspiration, 
+  isSelectionMode, 
+  isSelected, 
+  onPress, 
+  onLongPress 
+}: InspirationCardProps) => {
+  return (
+    <TouchableOpacity
+      onPress={() => onPress(inspiration.id)}
+      onLongPress={() => onLongPress(inspiration.id)}
+      style={styles.glassWrapper}
+      activeOpacity={0.8}
+    >
+      {/* 选择指示器 */}
+      {isSelectionMode && (
+        <View style={[
+          styles.selectionIndicator,
+          isSelected && styles.selectionIndicatorActive
+        ]}>
+          <Text style={styles.selectionText}>
+            {isSelected ? '✓' : ''}
+          </Text>
+        </View>
+      )}
+      
+      <Glass
+        type={inspiration.type}
+        completion={inspiration.completion}
+        status={inspiration.status}
+        size="medium"
+      />
+      <Text style={styles.glassLabel} numberOfLines={1}>
+        {inspiration.name}
+      </Text>
+    </TouchableOpacity>
+  );
+});
+
+// 卡片固定宽度，用于 getItemLayout
+const CARD_WIDTH = 130; // glassWrapper + gap
+
 export const BarScreen: React.FC = () => {
   const navigation = useNavigation<BarScreenNavigationProp>();
-  const { inspirations, isLoading, error, loadInspirations, clearError } = useInspirationStore();
+  
+  // 选择性订阅 Zustand store，避免全量订阅导致的重渲染
+  const inspirations = useInspirationStore((state) => state.inspirations);
+  const isLoading = useInspirationStore((state) => state.isLoading);
+  const error = useInspirationStore((state) => state.error);
+  const loadInspirations = useInspirationStore((state) => state.loadInspirations);
+  const clearError = useInspirationStore((state) => state.clearError);
   
   // 多选状态
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -22,25 +79,22 @@ export const BarScreen: React.FC = () => {
     loadInspirations();
   }, [loadInspirations]);
 
-  const handleInspirationPress = (id: string) => {
+  const handleInspirationPress = useCallback((id: string) => {
     if (isSelectionMode) {
-      // 多选模式：切换选中状态
       toggleSelection(id);
     } else {
-      // 正常模式：进入详情
       navigation.navigate('Detail', { inspirationId: id });
     }
-  };
+  }, [isSelectionMode, navigation]);
 
-  const handleInspirationLongPress = (id: string) => {
-    // 长按进入多选模式
+  const handleInspirationLongPress = useCallback((id: string) => {
     if (!isSelectionMode) {
       setIsSelectionMode(true);
       setSelectedIds([id]);
     }
-  };
+  }, [isSelectionMode]);
 
-  const toggleSelection = (id: string) => {
+  const toggleSelection = useCallback((id: string) => {
     setSelectedIds(prev => {
       if (prev.includes(id)) {
         return prev.filter(i => i !== id);
@@ -49,23 +103,64 @@ export const BarScreen: React.FC = () => {
       }
       return prev;
     });
-  };
+  }, []);
 
-  const handleCancelSelection = () => {
+  const handleCancelSelection = useCallback(() => {
     setIsSelectionMode(false);
     setSelectedIds([]);
-  };
+  }, []);
 
-  const handleStartCollision = () => {
+  const handleStartCollision = useCallback(() => {
     if (selectedIds.length >= 2) {
       navigation.navigate('Collision', { selectedIds });
       handleCancelSelection();
     }
-  };
+  }, [selectedIds, navigation, handleCancelSelection]);
 
-  const handleAddInspiration = () => {
+  const handleAddInspiration = useCallback(() => {
     navigation.navigate('Capture');
-  };
+  }, [navigation]);
+
+  // 进入数据管理页面
+  const handleOpenExport = useCallback(() => {
+    navigation.navigate('Export');
+  }, [navigation]);
+
+  // 进入 LLM 设置页面
+  const handleOpenLLMSettings = useCallback(() => {
+    setMenuVisible(false);
+    navigation.navigate('LLMSettings');
+  }, [navigation]);
+
+  // 设置菜单状态
+  const [menuVisible, setMenuVisible] = useState(false);
+
+  // FlatList 渲染项
+  const renderItem = useCallback(({ item }: { item: Inspiration }) => (
+    <InspirationCard
+      inspiration={item}
+      isSelectionMode={isSelectionMode}
+      isSelected={selectedIds.includes(item.id)}
+      onPress={handleInspirationPress}
+      onLongPress={handleInspirationLongPress}
+    />
+  ), [isSelectionMode, selectedIds, handleInspirationPress, handleInspirationLongPress]);
+
+  // 固定高度的 getItemLayout，提升 FlatList 性能
+  const getItemLayout = useCallback((_data: unknown, index: number) => ({
+    length: CARD_WIDTH,
+    offset: CARD_WIDTH * index + 20, // 加上 paddingHorizontal
+    index,
+  }), []);
+
+  // 列表为空时的组件
+  const ListEmptyComponent = useCallback(() => (
+    isLoading ? (
+      <ActivityIndicator size="large" color={barColors.primary} />
+    ) : (
+      <Text style={styles.emptyText}>还没有灵感，点击 + 开始创作</Text>
+    )
+  ), [isLoading]);
 
   return (
     <View style={styles.container}>
@@ -75,52 +170,52 @@ export const BarScreen: React.FC = () => {
         <View style={styles.spotlight} />
       </View>
 
+      {/* 设置按钮 */}
+      <View style={styles.settingsButtonContainer}>
+        <Menu
+          visible={menuVisible}
+          onDismiss={() => setMenuVisible(false)}
+          anchor={
+            <IconButton
+              icon="cog"
+              iconColor={barColors.textSecondary}
+              size={24}
+              onPress={() => setMenuVisible(true)}
+            />
+          }
+        >
+          <Menu.Item
+            onPress={() => {
+              setMenuVisible(false);
+              handleOpenExport();
+            }}
+            title="📤 数据管理"
+            leadingIcon="database-export"
+          />
+          <Menu.Item
+            onPress={handleOpenLLMSettings}
+            title="🤖 LLM 设置"
+            leadingIcon="brain"
+          />
+        </Menu>
+      </View>
+
       {/* 吧台 */}
       <View style={styles.barContainer}>
         <View style={styles.bar} />
-        <ScrollView 
-          horizontal 
-          style={styles.glassScrollView}
+        <FlatList
+          horizontal
+          data={inspirations}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          getItemLayout={getItemLayout}
+          ListEmptyComponent={ListEmptyComponent}
           contentContainerStyle={styles.glassContainer}
           showsHorizontalScrollIndicator={false}
-        >
-          {isLoading ? (
-            <ActivityIndicator size="large" color={barColors.primary} />
-          ) : inspirations.length === 0 ? (
-            <Text style={styles.emptyText}>还没有灵感，点击 + 开始创作</Text>
-          ) : (
-            inspirations.map((inspiration) => (
-              <TouchableOpacity
-                key={inspiration.id}
-                onPress={() => handleInspirationPress(inspiration.id)}
-                onLongPress={() => handleInspirationLongPress(inspiration.id)}
-                style={styles.glassWrapper}
-              >
-                {/* 选择指示器 */}
-                {isSelectionMode && (
-                  <View style={[
-                    styles.selectionIndicator,
-                    selectedIds.includes(inspiration.id) && styles.selectionIndicatorActive
-                  ]}>
-                    <Text style={styles.selectionText}>
-                      {selectedIds.includes(inspiration.id) ? '✓' : ''}
-                    </Text>
-                  </View>
-                )}
-                
-                <Glass
-                  type={inspiration.type}
-                  completion={inspiration.completion}
-                  status={inspiration.status}
-                  size="medium"
-                />
-                <Text style={styles.glassLabel} numberOfLines={1}>
-                  {inspiration.name}
-                </Text>
-              </TouchableOpacity>
-            ))
-          )}
-        </ScrollView>
+          initialNumToRender={10}
+          maxToRenderPerBatch={5}
+          windowSize={5}
+        />
       </View>
 
       {/* 多选模式底部栏 */}
@@ -202,6 +297,12 @@ const styles = StyleSheet.create({
     height: 300,
     backgroundColor: 'rgba(212, 160, 23, 0.1)',
   },
+  settingsButtonContainer: {
+    position: 'absolute',
+    top: 40,
+    right: 8,
+    zIndex: 10,
+  },
   barContainer: {
     flex: 1,
     justifyContent: 'flex-end',
@@ -212,20 +313,15 @@ const styles = StyleSheet.create({
     borderTopWidth: 4,
     borderTopColor: '#5d4b3f',
   },
-  glassScrollView: {
-    position: 'absolute',
-    bottom: 40,
-    left: 0,
-    right: 0,
-  },
   glassContainer: {
     paddingHorizontal: 20,
     alignItems: 'flex-end',
-    gap: 30,
   },
   glassWrapper: {
     alignItems: 'center',
     position: 'relative',
+    width: 100,
+    marginRight: 30,
   },
   selectionIndicator: {
     position: 'absolute',

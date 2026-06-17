@@ -18,8 +18,8 @@ export enum InspirationStatus {
 }
 
 export enum MixType {
-  LAYER = 'layer',     // 分层
-  BLEND = 'blend',     // 混色
+  LAYER = 'layer',
+  BLEND = 'blend',
 }
 
 export interface RawInput {
@@ -27,6 +27,32 @@ export interface RawInput {
   images?: string[];
   voice?: string;
   link?: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: number;
+}
+
+export interface BrainstormCard {
+  id: string;
+  title: string;
+  content: string;
+  color: string;
+  createdAt: number;
+}
+
+export interface StructuredContent {
+  title?: string;
+  summary?: string;
+  categories?: string[];
+  tags?: string[];
+  metadata?: Record<string, unknown>;
+  steps?: string[];
+  plan?: string;
+  actions?: string[];
 }
 
 export interface Inspiration {
@@ -37,49 +63,38 @@ export interface Inspiration {
   status: InspirationStatus;
   
   rawInput: RawInput;
-  brewingLog: any[];
-  brainstormCards: any[];
-  collisionHistory: any[];
-  structuredContent: any;
+  brewingLog: ChatMessage[];
+  brainstormCards: BrainstormCard[];
+  collisionHistory: CollisionRecord[];
+  structuredContent: StructuredContent;
   
   createdAt: number;
   updatedAt: number;
 }
 
-/**
- * 配方建议
- */
 export interface Recipe {
   id: string;
-  title: string;                  // 方案标题
-  description: string;           // 详细描述
-  keywords: string[];            // 关键词
-  directions: string[];           // 可能的发展方向
-  score: number;                 // 创意评分
+  title: string;
+  description: string;
+  keywords: string[];
+  directions: string[];
+  score: number;
 }
 
-/**
- * 碰撞记录
- */
 export interface CollisionRecord {
   id: string;
-  sourceInspirationIds: string[]; // 源灵感 ID 列表（2-3个）
-  resultInspirationId?: string;    // 生成的新灵感 ID
+  sourceInspirationIds: string[];
+  resultInspirationId?: string;
   
-  // 碰撞过程
-  mixType: MixType;              // 分层 or 混色
-  mixColors: string[];           // 混合颜色
+  mixType: MixType;
+  mixColors: string[];
   
-  // 配方建议
   recipes: Recipe[];
   selectedRecipe?: Recipe;
   
   createdAt: number;
 }
 
-/**
- * 混合结果
- */
 export interface MixedResult {
   mixedColor: string;
   mixType: MixType;
@@ -88,19 +103,16 @@ export interface MixedResult {
   combinedContent: string;
 }
 
-/**
- * 摇晃动画阶段
- */
 export enum ShakePhase {
-  POUR = 'pour',                 // 倒入
-  SHAKE = 'shake',              // 摇晃
-  POUR_OUT = 'pour_out',         // 倒出
+  POUR = 'pour',
+  SHAKE = 'shake',
+  POUR_OUT = 'pour_out',
 }
 
 export interface ShakeAnimation {
   phase: ShakePhase;
-  progress: number;              // 0-1
-  colors: string[];             // 当前颜色
+  progress: number;
+  colors: string[];
 }
 
 export type RootStackParamList = {
@@ -109,4 +121,6 @@ export type RootStackParamList = {
   Detail: { inspirationId: string };
   Brewing: { inspirationId: string };
   Collision: { selectedIds: string[] };
+  Export: undefined;
+  LLMSettings: undefined;
 };

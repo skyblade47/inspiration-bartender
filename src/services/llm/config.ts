@@ -118,13 +118,13 @@ export async function saveConfig(config: LLMConfig, isDefault: boolean = false):
 export async function getConfig(provider: LLMProvider): Promise<LLMConfig | null> {
   if (!db) await initConfigDatabase();
   
-  const row = await db!.getFirstAsync(
+  const row = await db!.getFirstAsync<{ config: string }>(
     `SELECT config FROM ${CONFIG_TABLE_NAME} WHERE provider = ?`,
     provider
   );
   
   if (!row) return null;
-  return JSON.parse((row as any).config) as LLMConfig;
+  return JSON.parse(row.config) as LLMConfig;
 }
 
 /**
@@ -133,12 +133,12 @@ export async function getConfig(provider: LLMProvider): Promise<LLMConfig | null
 export async function getDefaultConfig(): Promise<LLMConfig | null> {
   if (!db) await initConfigDatabase();
   
-  const row = await db!.getFirstAsync(
+  const row = await db!.getFirstAsync<{ config: string }>(
     `SELECT config FROM ${CONFIG_TABLE_NAME} WHERE isDefault = 1 LIMIT 1`
   );
   
   if (!row) return null;
-  return JSON.parse((row as any).config) as LLMConfig;
+  return JSON.parse(row.config) as LLMConfig;
 }
 
 /**
@@ -147,11 +147,11 @@ export async function getDefaultConfig(): Promise<LLMConfig | null> {
 export async function getAllConfigs(): Promise<LLMConfig[]> {
   if (!db) await initConfigDatabase();
   
-  const rows = await db!.getAllAsync(
+  const rows = await db!.getAllAsync<{ config: string }>(
     `SELECT config FROM ${CONFIG_TABLE_NAME} ORDER BY updatedAt DESC`
   );
   
-  return rows.map((row: any) => JSON.parse(row.config) as LLMConfig);
+  return rows.map((row) => JSON.parse(row.config) as LLMConfig);
 }
 
 /**

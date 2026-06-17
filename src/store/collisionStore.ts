@@ -5,7 +5,9 @@ import type {
   Recipe,
   MixedResult 
 } from '../types';
-import { MixType, ShakePhase } from '../types';
+import { MixType, ShakePhase, GlassType } from '../types';
+import { generateId } from '../utils/generate-id';
+import { glassConfigs } from '../constants/glassTypes';
 
 // ============================================================
 // 碰撞界面阶段
@@ -76,9 +78,6 @@ interface CollisionStore {
   reset: () => void;
 }
 
-// 生成唯一ID
-const generateId = () => Math.random().toString(36).substring(2, 9);
-
 // 初始状态
 const initialState = {
   phase: CollisionPhase.SELECT,
@@ -95,18 +94,8 @@ const initialState = {
 };
 
 // 根据杯子类型获取液体颜色
-const getLiquidColorByGlassType = (glassType: string): string => {
-  const colorMap: Record<string, string> = {
-    brandy: '#1E3A5F',
-    champagne: '#9B59B6',
-    wine: '#8B0000',
-    cocktail: '#D4A017',
-    beaker: '#00FF7F',
-    mason: '#FF8C00',
-    flask: '#87CEEB',
-    martini: 'linear-gradient(135deg, #D4A017 0%, #9B59B6 100%)',
-  };
-  return colorMap[glassType] || '#D4A017';
+const getLiquidColorByGlassType = (glassType: GlassType): string => {
+  return glassConfigs[glassType]?.liquidColor || '#D4A017';
 };
 
 export const useCollisionStore = create<CollisionStore>((set, get) => ({

@@ -17,8 +17,8 @@ export interface ScoringPromptVars {
   criteria?: string;
 }
 
-// 评分结果接口
-export interface ScoringResult {
+// 评分结果接口（LLM 解析结果）
+export interface LLMParsedScoringResult {
   // 总分
   totalScore: number;
   // 各维度分数
@@ -33,36 +33,52 @@ export interface ScoringResult {
   comment: string;
   // 改进建议
   suggestions: string[];
+  // 评分来源
+  source: 'llm';
+}
+
+// 本地维度评分接口
+export interface LocalDimensionScores {
+  clarity: number;      // 清晰度
+  richness: number;     // 丰富度
+  feasibility: number;  // 可行性
+  uniqueness: number;   // 独特性
 }
 
 // 系统提示词 - 评分专家角色
 export const SCORING_SYSTEM_PROMPT = `你是一位专业的灵感评估专家，负责评估灵感的质量和成熟度。
-你的评估基于以下五个维度：
+你的评估基于以下五个维度，最终会映射到统一的四维模型：
 
-1. 清晰度 (clarity, 0-100)
+1. 清晰度 (clarity, 0-100) → 本地维度：清晰度
    - 灵感是否表达清晰
    - 核心概念是否明确
    - 是否容易理解
 
-2. 深度 (depth, 0-100)
+2. 深度 (depth, 0-100) → 本地维度：丰富度（权重0.6）
    - 思考是否深入
    - 是否触及本质问题
    - 是否有层次感
 
-3. 可执行性 (actionability, 0-100)
+3. 可执行性 (actionability, 0-100) → 本地维度：可行性
    - 是否可以转化为具体行动
    - 是否有明确的下一步
    - 是否现实可行
 
-4. 创意度 (creativity, 0-100)
+4. 创意度 (creativity, 0-100) → 本地维度：独特性
    - 是否有新颖的想法
    - 是否有独特的视角
    - 是否有创新的组合
 
-5. 完整度 (completeness, 0-100)
+5. 完整度 (completeness, 0-100) → 本地维度：丰富度（权重0.4）
    - 各要素是否完整
    - 是否有遗漏的重要部分
    - 是否形成闭环
+
+维度映射说明：
+- clarity 直接映射为清晰度
+- depth 和 completeness 加权合并为丰富度（depth * 0.6 + completeness * 0.4）
+- actionability 直接映射为可行性
+- creativity 直接映射为独特性
 
 请用 JSON 格式返回评分结果，格式如下：
 {
@@ -191,7 +207,7 @@ export function createProgressScoringPrompt(vars: ScoringPromptVars): string {
  * 解析评分结果
  * 从 LLM 返回的 JSON 文本中提取评分结果
  */
-export function parseScoringResult(responseText: string): ScoringResult {
+export function parseScoringResult(responseText: string): LLMParsedScoringResult {
   try {
     // 尝试提取 JSON 部分
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
@@ -213,6 +229,7 @@ export function parseScoringResult(responseText: string): ScoringResult {
       },
       comment: parsed.comment ?? '暂无评语',
       suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions : [],
+      source: 'llm',
     };
   } catch (error) {
     // 解析失败时返回默认结果
@@ -228,6 +245,7 @@ export function parseScoringResult(responseText: string): ScoringResult {
       },
       comment: '评分解析失败，请重试',
       suggestions: [],
+      source: 'llm',
     };
   }
 }
@@ -248,7 +266,7 @@ export function buildScoringMessages(
  * 计算加权总分
  */
 export function calculateWeightedScore(
-  dimensions: ScoringResult['dimensions'],
+  dimensions: LLMParsedScoringResult['dimensions'],
   weights?: {
     clarity?: number;
     depth?: number;
@@ -274,4 +292,27 @@ export function calculateWeightedScore(
     dimensions.creativity * w.creativity! +
     dimensions.completeness * w.completeness!
   );
+}
+
+/**
+ * 将 LLM 评分维度转换为本地维度
+ * 维度映射规则：
+ * - clarity → CLARITY（清晰度）
+ * - depth → RICHNESS（丰富度）的深度因子（权重0.6）
+ * - completeness → RICHNESS（丰富度）的完整因子（权重0.4）
+ * - actionability → FEASIBILITY（可行性）
+ * - creativity → UNIQUENESS（独特性）
+ */
+export function convertLLMToLocalDimensions(
+  llmResult: LLMParsedScoringResult
+): LocalDimensionScores {
+  return {
+    clarity: llmResult.dimensions.clarity,
+    richness: Math.round(
+      llmResult.dimensions.depth * 0.6 +
+      llmResult.dimensions.completeness * 0.4
+    ),
+    feasibility: llmResult.dimensions.actionability,
+    uniqueness: llmResult.dimensions.creativity,
+  };
 }

@@ -14,6 +14,8 @@ import { CaptureScreen } from './screens/CaptureScreen';
 import { DetailScreen } from './screens/DetailScreen';
 import { BrewingScreen } from './screens/BrewingScreen';
 import { CollisionScreen } from './screens/CollisionScreen';
+import { ExportScreen } from './screens/ExportScreen';
+import { LLMSettingsScreen } from './screens/LLMSettingsScreen';
 import { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -106,6 +108,16 @@ export default function App() {
                 name="Collision" 
                 component={CollisionScreen} 
                 options={{ title: '灵感碰撞' }}
+              />
+              <Stack.Screen 
+                name="Export" 
+                component={ExportScreen} 
+                options={{ title: '数据管理' }}
+              />
+              <Stack.Screen 
+                name="LLMSettings" 
+                component={LLMSettingsScreen} 
+                options={{ title: 'LLM 设置' }}
               />
             </Stack.Navigator>
           </NavigationContainer>

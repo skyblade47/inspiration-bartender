@@ -1,11 +1,12 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { 
   Text, 
   Button, 
   Divider,
   ActivityIndicator,
+  Snackbar,
 } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -13,8 +14,11 @@ import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { useInspirationStore } from '../../store/inspirationStore';
 import { Glass } from '../../components/Glass';
+import { ScoringSection } from '../../components/ScoringSection';
+import { CommentSection } from '../../components/CommentSection';
 import { glassConfigs } from '../../constants/glassTypes';
 import { barColors } from '../../constants/theme';
+import { quickScoreInspiration, deepScoreInspiration, ScoringResult, DeepScoringResult } from '../../services/scoring';
 
 type DetailScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Detail'>;
 type DetailScreenRouteProp = RouteProp<RootStackParamList, 'Detail'>;
@@ -26,6 +30,38 @@ export const DetailScreen: React.FC = () => {
   const { getInspiration, deleteInspiration, isLoading } = useInspirationStore();
   
   const inspiration = getInspiration(inspirationId);
+  
+  const [scoringResult, setScoringResult] = useState<ScoringResult | DeepScoringResult | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (inspiration) {
+      const result = quickScoreInspiration(inspiration);
+      setScoringResult(result);
+    }
+  }, [inspiration]);
+
+  const handleDeepScore = async () => {
+    if (!inspiration) return;
+    
+    setIsAnalyzing(true);
+    setHasError(false);
+    try {
+      const result = await deepScoreInspiration(inspiration);
+      setScoringResult(result);
+      if (result.source === 'local' && result.llmComment?.includes('失败')) {
+        setHasError(true);
+      }
+    } catch (error) {
+      console.error('深度评分失败:', error);
+      setHasError(true);
+      setErrorMessage('深度分析失败，请稍后重试');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   const handleDelete = async () => {
     await deleteInspiration(inspirationId);
@@ -75,6 +111,30 @@ export const DetailScreen: React.FC = () => {
 
       <Divider style={styles.divider} />
 
+      {/* 评分区域 */}
+      <View style={styles.section}>
+        <ScoringSection
+          inspiration={inspiration}
+          scoringResult={scoringResult}
+          onDeepScore={handleDeepScore}
+          isAnalyzing={isAnalyzing}
+          hasError={hasError}
+        />
+      </View>
+
+      {/* AI评语区域 - 仅当LLM评分成功后显示 */}
+      {scoringResult && 'llmComment' in scoringResult && scoringResult.source === 'llm' && (
+        <>
+          <Divider style={styles.divider} />
+          <CommentSection
+            llmComment={scoringResult.llmComment || ''}
+            llmSuggestions={scoringResult.llmSuggestions || []}
+          />
+        </>
+      )}
+
+      <Divider style={styles.divider} />
+
       {/* 灵感内容 */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>灵感内容</Text>
@@ -105,6 +165,19 @@ export const DetailScreen: React.FC = () => {
           删除
         </Button>
       </View>
+
+      {/* 错误提示 */}
+      <Snackbar
+        visible={!!errorMessage}
+        onDismiss={() => setErrorMessage(null)}
+        duration={3000}
+        action={{
+          label: '关闭',
+          onPress: () => setErrorMessage(null),
+        }}
+      >
+        {errorMessage}
+      </Snackbar>
     </ScrollView>
   );
 };

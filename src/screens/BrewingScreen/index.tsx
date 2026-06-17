@@ -44,7 +44,6 @@ const LiquidVisualization: React.FC<{
 
   useEffect(() => {
     if (isPouring) {
-      // 倾倒动画
       pourY.value = withRepeat(
         withSequence(
           withTiming(0, { duration: 500, easing: Easing.out(Easing.quad) }),
@@ -54,6 +53,10 @@ const LiquidVisualization: React.FC<{
         false
       );
     }
+
+    return () => {
+      pourY.value = 0;
+    };
   }, [isPouring]);
 
   const pourStyle = useAnimatedStyle(() => ({
@@ -119,7 +122,6 @@ const BubbleEffect: React.FC = () => {
     const bubbleOpacity = useSharedValue(0);
 
     useEffect(() => {
-      // 气泡上升动画
       bubbleY.value = withRepeat(
         withTiming(-100, { duration: 2000 + i * 500, easing: Easing.out(Easing.quad) }),
         -1,
@@ -133,6 +135,11 @@ const BubbleEffect: React.FC = () => {
         -1,
         false
       );
+
+      return () => {
+        bubbleY.value = 0;
+        bubbleOpacity.value = 0;
+      };
     }, []);
 
     const bubbleStyle = useAnimatedStyle(() => ({
