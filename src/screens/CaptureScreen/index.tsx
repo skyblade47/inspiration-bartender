@@ -58,7 +58,7 @@ export const CaptureScreen: React.FC = () => {
     >
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top, paddingBottom: insets.bottom + 20 }]}>
         <Text style={styles.title}>捕获新灵感</Text>
-        
+
         {/* 杯子类型选择 */}
         <Text style={styles.label}>选择灵感类型</Text>
         <SegmentedButtons
