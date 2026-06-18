@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, memo } from 'react';
 import { View, StyleSheet, FlatList, Text, TouchableOpacity } from 'react-native';
 import { FAB, ActivityIndicator, Portal, Snackbar, Button, IconButton, Menu } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList, Inspiration } from '../../types';
@@ -63,6 +64,7 @@ const CARD_WIDTH = 130; // glassWrapper + gap
 
 export const BarScreen: React.FC = () => {
   const navigation = useNavigation<BarScreenNavigationProp>();
+  const insets = useSafeAreaInsets();
   
   // 选择性订阅 Zustand store，避免全量订阅导致的重渲染
   const inspirations = useInspirationStore((state) => state.inspirations);
@@ -171,7 +173,7 @@ export const BarScreen: React.FC = () => {
       </View>
 
       {/* 设置按钮 */}
-      <View style={styles.settingsButtonContainer}>
+      <View style={[styles.settingsButtonContainer, { top: insets.top + 8 }]}>
         <Menu
           visible={menuVisible}
           onDismiss={() => setMenuVisible(false)}
@@ -248,7 +250,7 @@ export const BarScreen: React.FC = () => {
       {!isSelectionMode && (
         <FAB
           icon="plus"
-          style={styles.fab}
+          style={[styles.fab, { bottom: insets.bottom + 20 }]}
           color={barColors.background}
           onPress={handleAddInspiration}
         />
@@ -299,7 +301,6 @@ const styles = StyleSheet.create({
   },
   settingsButtonContainer: {
     position: 'absolute',
-    top: 40,
     right: 8,
     zIndex: 10,
   },
@@ -361,7 +362,6 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: 20,
-    bottom: 20,
     backgroundColor: barColors.primary,
   },
   selectionBar: {

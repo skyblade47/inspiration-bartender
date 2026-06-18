@@ -16,6 +16,7 @@ import {
 } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../../types';
 import { barColors } from '../../constants/theme';
 import {
@@ -60,6 +61,7 @@ const InspirationSelectCard = memo(({ inspiration, isSelected, onPress }: Inspir
 
 export const ExportScreen: React.FC = () => {
   const navigation = useNavigation<ExportScreenNavigationProp>();
+  const insets = useSafeAreaInsets();
 
   // 状态
   const [isExporting, setIsExporting] = useState(false);
@@ -149,7 +151,7 @@ export const ExportScreen: React.FC = () => {
   }, [navigation]);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16 }]}>
       {/* 标题 */}
       <View style={styles.header}>
         <Text style={styles.title}>数据管理</Text>

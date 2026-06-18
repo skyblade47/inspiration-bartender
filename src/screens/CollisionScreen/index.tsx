@@ -1,8 +1,9 @@
 import React, { useEffect, useCallback } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text, Button, IconButton, ActivityIndicator } from 'react-native-paper';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { RootStackParamList, Inspiration, MixedResult, Recipe } from '../../types';
 import { useCollisionStore, CollisionPhase } from '../../store/collisionStore';
 import { useInspirationStore } from '../../store/inspirationStore';
@@ -162,6 +163,7 @@ async function generateLLMResult(
 export const CollisionScreen: React.FC = () => {
   const navigation = useNavigation<CollisionScreenNavigationProp>();
   const route = useRoute<CollisionScreenRouteProp>();
+  const insets = useSafeAreaInsets();
   
   // 状态
   const {
@@ -270,7 +272,7 @@ export const CollisionScreen: React.FC = () => {
   const renderSelectPhase = () => (
     <View style={styles.selectContainer}>
       {/* 标题栏 */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <IconButton
           icon="arrow-left"
           iconColor={barColors.text}
@@ -294,7 +296,7 @@ export const CollisionScreen: React.FC = () => {
       {/* 灵感列表 */}
       <ScrollView
         style={styles.inspirationsList}
-        contentContainerStyle={styles.inspirationsContent}
+        contentContainerStyle={[styles.inspirationsContent, { paddingBottom: insets.bottom + 20 }]}
         showsVerticalScrollIndicator={false}
       >
         {inspirations.map((inspiration) => {
@@ -324,7 +326,7 @@ export const CollisionScreen: React.FC = () => {
       </ScrollView>
 
       {/* 底部操作 */}
-      <View style={styles.bottomActions}>
+      <View style={[styles.bottomActions, { paddingBottom: insets.bottom + 16 }]}>
         <Button
           mode="outlined"
           onPress={clearSelection}
@@ -366,7 +368,7 @@ export const CollisionScreen: React.FC = () => {
   const renderRecipesPhase = () => (
     <View style={styles.recipesContainer}>
       {/* 标题栏 */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <IconButton
           icon="arrow-left"
           iconColor={barColors.text}
@@ -393,7 +395,7 @@ export const CollisionScreen: React.FC = () => {
       {/* 配方列表 */}
       <ScrollView
         style={styles.recipesList}
-        contentContainerStyle={styles.recipesContent}
+        contentContainerStyle={[styles.recipesContent, { paddingBottom: insets.bottom + 20 }]}
         showsVerticalScrollIndicator={false}
       >
         {recipes.map((recipe, index) => (
@@ -408,7 +410,7 @@ export const CollisionScreen: React.FC = () => {
       </ScrollView>
 
       {/* 底部操作 */}
-      <View style={styles.bottomActions}>
+      <View style={[styles.bottomActions, { paddingBottom: insets.bottom + 16 }]}>
         <Button
           mode="outlined"
           onPress={handleRestart}
@@ -434,11 +436,14 @@ export const CollisionScreen: React.FC = () => {
   // 主渲染
   // ============================================================
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       {phase === CollisionPhase.SELECT && renderSelectPhase()}
       {phase === CollisionPhase.ANIMATING && renderAnimatingPhase()}
       {phase === CollisionPhase.RECIPES && renderRecipesPhase()}
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 

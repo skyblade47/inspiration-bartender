@@ -21,6 +21,7 @@ import {
 } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../../types';
 import { barColors } from '../../constants/theme';
 import {
@@ -179,6 +180,7 @@ const ConfigCard = memo(({
 
 export const LLMSettingsScreen: React.FC = () => {
   const navigation = useNavigation<LLMSettingsNavigationProp>();
+  const insets = useSafeAreaInsets();
 
   // 状态
   const [configs, setConfigs] = useState<LLMConfig[]>([]);
@@ -273,7 +275,7 @@ export const LLMSettingsScreen: React.FC = () => {
         config = {
           provider: LLMProvider.OLLAMA,
           model: selectedModel,
-          baseUrl: baseUrl.trim() || 'http://localhost:11434',
+          baseUrl: baseUrl.trim() || 'http://192.168.1.10:11434',
         } as OllamaConfig;
       }
 
@@ -378,9 +380,9 @@ export const LLMSettingsScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       {/* 头部 */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 24 }]}>
         <Text style={styles.title}>LLM 设置</Text>
-        <Text style={styles.subtitle}>配置 AI 语言模型以启用智能对话</Text>
+        <Text style={styles.subtitle}>配置 AI 语言模型以启用智能对话。同时支持电脑端小说教练 HTTP 服务地址和 Ollama 本地服务地址。</Text>
       </View>
 
       <ScrollView style={styles.content}>
@@ -416,7 +418,7 @@ export const LLMSettingsScreen: React.FC = () => {
       </ScrollView>
 
       {/* 返回按钮 */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
         <Button mode="outlined" onPress={handleGoBack} textColor={barColors.text}>
           返回
         </Button>
@@ -441,14 +443,19 @@ export const LLMSettingsScreen: React.FC = () => {
                 />
               )}
               {editingProvider === LLMProvider.OLLAMA && (
-                <TextInput
-                  label="服务地址"
-                  value={baseUrl}
-                  onChangeText={setBaseUrl}
-                  placeholder="http://localhost:11434"
-                  style={styles.input}
-                  mode="outlined"
-                />
+                <>
+                  <TextInput
+                    label="服务地址"
+                    value={baseUrl}
+                    onChangeText={setBaseUrl}
+                    placeholder="http://192.168.1.10:11434"
+                    style={styles.input}
+                    mode="outlined"
+                  />
+                  <Text style={styles.helperText}>
+                    Android 真机不能使用电脑的 localhost，请填写电脑的局域网地址，例如 http://192.168.1.10:11434。在可信局域网使用时请注意网络安全风险，避免在公共 WiFi 下暴露服务地址。
+                  </Text>
+                </>
               )}
               {editingProvider !== LLMProvider.OLLAMA && (
                 <TextInput
@@ -613,6 +620,13 @@ const styles = StyleSheet.create({
   input: {
     marginBottom: 16,
     backgroundColor: barColors.background,
+  },
+  helperText: {
+    marginTop: -8,
+    marginBottom: 16,
+    fontSize: 12,
+    color: barColors.textSecondary,
+    lineHeight: 18,
   },
   modelLabel: {
     fontSize: 14,

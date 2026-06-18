@@ -22,6 +22,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconButton } from 'react-native-paper';
 import { RootStackParamList, GlassType } from '../../types';
 import { useBrewingStore, LiquidLayer } from '../../store/brewingStore';
@@ -166,6 +167,7 @@ export const BrewingScreen: React.FC = () => {
   const route = useRoute();
   const navigation = useNavigation<BrewingScreenNavigationProp>();
   const scrollViewRef = useRef<ScrollView>(null);
+  const insets = useSafeAreaInsets();
 
   // 从 store 获取状态和方法
   const {
@@ -233,8 +235,8 @@ export const BrewingScreen: React.FC = () => {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={[styles.container, { paddingTop: insets.top, paddingBottom: 0 }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       {/* 背景 */}
@@ -309,7 +311,7 @@ export const BrewingScreen: React.FC = () => {
           <ScrollView
             ref={scrollViewRef}
             style={styles.chatScrollView}
-            contentContainerStyle={styles.chatContent}
+            contentContainerStyle={[styles.chatContent, { paddingBottom: insets.bottom + 32 }]}
             showsVerticalScrollIndicator={false}
           >
             {messages.map((message, index) => (
@@ -325,7 +327,7 @@ export const BrewingScreen: React.FC = () => {
       </View>
 
       {/* 输入区域 */}
-      <View style={styles.inputContainer}>
+      <View style={[styles.inputContainer, { paddingBottom: insets.bottom + 12 }]}>
         <View style={styles.inputWrapper}>
           <TextInput
             style={styles.textInput}

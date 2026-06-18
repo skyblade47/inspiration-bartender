@@ -10,6 +10,7 @@ import {
 } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { useInspirationStore } from '../../store/inspirationStore';
@@ -26,6 +27,7 @@ type DetailScreenRouteProp = RouteProp<RootStackParamList, 'Detail'>;
 export const DetailScreen: React.FC = () => {
   const navigation = useNavigation<DetailScreenNavigationProp>();
   const route = useRoute<DetailScreenRouteProp>();
+  const insets = useSafeAreaInsets();
   const { inspirationId } = route.params;
   const { getInspiration, deleteInspiration, isLoading } = useInspirationStore();
   
@@ -84,7 +86,7 @@ export const DetailScreen: React.FC = () => {
   });
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} contentContainerStyle={[styles.content, { paddingTop: insets.top, paddingBottom: insets.bottom + 20 }]}>
       {/* 杯子展示 */}
       <View style={styles.glassSection}>
         <Glass
