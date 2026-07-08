@@ -83,13 +83,17 @@ jobs:
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
-          echo "$KEYSTORE_BASE64" | base64 -d > android/app/release.keystore
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > android/app/release.keystore
+          else
+            keytool -genkey -v -keystore android/app/release.keystore -alias release -keyalg RSA -keysize 2048 -validity 10000 -storepass releasepass -keypass releasepass -dname "CN=Android Release,O=Android,C=US"
+          fi
 
       - name: Build Release APK
         env:
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'releasepass' }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'release' }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'releasepass' }}
         run: |
           cd android
           chmod +x gradlew
