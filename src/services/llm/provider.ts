@@ -71,16 +71,42 @@ interface AnthropicStreamDelta {
   };
 }
 
+// 模型信息
+export interface ModelInfo {
+  id: string;
+  name?: string;
+  description?: string;
+}
+
 // LLM 提供商接口
 export interface ILLMProvider {
   chat(request: ChatRequest): Promise<ChatResponse>;
   chatStream?(request: ChatRequest, onChunk: (chunk: string) => void): Promise<void>;
+  fetchModels?(): Promise<ModelInfo[]>;
 }
 class OpenAIProvider implements ILLMProvider {
   private config: OpenAIConfig;
 
   constructor(config: OpenAIConfig) {
     this.config = config;
+  }
+
+  async fetchModels(): Promise<ModelInfo[]> {
+    const baseUrl = this.config.baseUrl || 'https://api.openai.com/v1';
+    const response = await fetch(`${baseUrl}/models`, {
+      headers: {
+        'Authorization': `Bearer ${this.config.apiKey}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`获取模型列表失败: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return (data.data || [])
+      .filter((m: { id: string }) => m.id.includes('gpt'))
+      .map((m: { id: string }) => ({ id: m.id }));
   }
 
   async chat(request: ChatRequest): Promise<ChatResponse> {
@@ -320,6 +346,20 @@ class OllamaProvider implements ILLMProvider {
     this.config = config;
   }
 
+  async fetchModels(): Promise<ModelInfo[]> {
+    const response = await fetch(`${this.config.baseUrl}/api/tags`);
+
+    if (!response.ok) {
+      throw new Error(`获取模型列表失败: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return (data.models || []).map((m: { name: string; model?: string }) => ({
+      id: m.name,
+      name: m.model,
+    }));
+  }
+
   async chat(request: ChatRequest): Promise<ChatResponse> {
     const response = await fetch(`${this.config.baseUrl}/api/chat`, {
       method: 'POST',
@@ -463,6 +503,23 @@ class GeminiProvider implements ILLMProvider {
       finishReason: data.candidates?.[0]?.finishReason,
     };
   }
+
+  async fetchModels(): Promise<ModelInfo[]> {
+    const baseUrl = this.config.baseUrl || 'https://generativelanguage.googleapis.com/v1beta';
+    const response = await fetch(`${baseUrl}/models?key=${this.config.apiKey}`);
+
+    if (!response.ok) {
+      throw new Error(`获取模型列表失败: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return (data.models || [])
+      .filter((m: { name: string }) => m.name.includes('gemini'))
+      .map((m: { name: string; displayName?: string }) => ({
+        id: m.name.replace('models/', ''),
+        name: m.displayName,
+      }));
+  }
 }
 
 /**
@@ -473,6 +530,22 @@ class DeepSeekProvider implements ILLMProvider {
 
   constructor(config: DeepSeekConfig) {
     this.config = config;
+  }
+
+  async fetchModels(): Promise<ModelInfo[]> {
+    const baseUrl = this.config.baseUrl || 'https://api.deepseek.com/v1';
+    const response = await fetch(`${baseUrl}/models`, {
+      headers: {
+        'Authorization': `Bearer ${this.config.apiKey}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`获取模型列表失败: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return (data.data || []).map((m: { id: string }) => ({ id: m.id }));
   }
 
   async chat(request: ChatRequest): Promise<ChatResponse> {
@@ -583,6 +656,22 @@ class MoonshotProvider implements ILLMProvider {
 
   constructor(config: MoonshotConfig) {
     this.config = config;
+  }
+
+  async fetchModels(): Promise<ModelInfo[]> {
+    const baseUrl = this.config.baseUrl || 'https://api.moonshot.cn/v1';
+    const response = await fetch(`${baseUrl}/models`, {
+      headers: {
+        'Authorization': `Bearer ${this.config.apiKey}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`获取模型列表失败: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return (data.data || []).map((m: { id: string }) => ({ id: m.id }));
   }
 
   async chat(request: ChatRequest): Promise<ChatResponse> {
@@ -747,6 +836,21 @@ class CustomProvider implements ILLMProvider {
 
   constructor(config: CustomConfig) {
     this.config = config;
+  }
+
+  async fetchModels(): Promise<ModelInfo[]> {
+    const response = await fetch(`${this.config.baseUrl}/models`, {
+      headers: {
+        'Authorization': `Bearer ${this.config.apiKey}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`获取模型列表失败: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return (data.data || []).map((m: { id: string }) => ({ id: m.id }));
   }
 
   async chat(request: ChatRequest): Promise<ChatResponse> {

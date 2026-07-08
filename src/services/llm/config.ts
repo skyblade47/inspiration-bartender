@@ -267,3 +267,85 @@ export function getDefaultModels(provider: LLMProvider): string[] {
       return [];
   }
 }
+
+// 模型缓存表名
+const MODEL_CACHE_TABLE_NAME = 'llm_model_cache';
+
+// 模型缓存有效期（24小时）
+const MODEL_CACHE_TTL = 24 * 60 * 60 * 1000;
+
+/**
+ * 初始化模型缓存数据库表
+ */
+async function initModelCacheTable(): Promise<void> {
+  if (!db) await initConfigDatabase();
+  await db!.execAsync(`
+    CREATE TABLE IF NOT EXISTS ${MODEL_CACHE_TABLE_NAME} (
+      provider TEXT PRIMARY KEY,
+      models TEXT NOT NULL,
+      cachedAt INTEGER NOT NULL
+    );
+  `);
+}
+
+/**
+ * 缓存模型列表
+ * @param provider LLM 提供商
+ * @param models 模型列表
+ */
+export async function cacheModels(provider: LLMProvider, models: string[]): Promise<void> {
+  await initModelCacheTable();
+  const now = Date.now();
+  await db!.runAsync(
+    `INSERT OR REPLACE INTO ${MODEL_CACHE_TABLE_NAME} (provider, models, cachedAt) VALUES (?, ?, ?)`,
+    provider,
+    JSON.stringify(models),
+    now
+  );
+}
+
+/**
+ * 获取缓存的模型列表
+ * @param provider LLM 提供商
+ * @returns 模型列表或 null（如果缓存过期）
+ */
+export async function getCachedModels(provider: LLMProvider): Promise<string[] | null> {
+  await initModelCacheTable();
+  const row = await db!.getFirstAsync<{ models: string; cachedAt: number }>(
+    `SELECT models, cachedAt FROM ${MODEL_CACHE_TABLE_NAME} WHERE provider = ?`,
+    provider
+  );
+
+  if (!row) return null;
+
+  const age = Date.now() - row.cachedAt;
+  if (age > MODEL_CACHE_TTL) {
+    // 缓存过期，删除
+    await db!.runAsync(`DELETE FROM ${MODEL_CACHE_TABLE_NAME} WHERE provider = ?`, provider);
+    return null;
+  }
+
+  return JSON.parse(row.models) as string[];
+}
+
+/**
+ * 获取模型列表（优先从 API 获取，失败则回退到缓存或默认列表）
+ * @param provider LLM 提供商
+ * @param fetcher 从 API 获取模型的函数
+ */
+export async function fetchModelsWithFallback(
+  provider: LLMProvider,
+  fetcher: () => Promise<string[]>
+): Promise<string[]> {
+  try {
+    const models = await fetcher();
+    await cacheModels(provider, models);
+    return models;
+  } catch {
+    // API 获取失败，尝试使用缓存
+    const cached = await getCachedModels(provider);
+    if (cached) return cached;
+    // 缓存也没有，回退到默认列表
+    return getDefaultModels(provider);
+  }
+}

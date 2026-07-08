@@ -43,8 +43,10 @@ import {
   setDefaultConfig,
   validateConfig,
   getDefaultModels,
+  fetchModelsWithFallback,
+  getCachedModels,
 } from '../../services/llm/config';
-import { createProvider, MessageRole } from '../../services/llm/provider';
+import { createProvider, MessageRole, ModelInfo } from '../../services/llm/provider';
 
 type LLMSettingsNavigationProp = NativeStackNavigationProp<RootStackParamList, 'LLMSettings'>;
 
@@ -234,6 +236,8 @@ export const LLMSettingsScreen: React.FC = () => {
   const [selectedModel, setSelectedModel] = useState('');
   const [models, setModels] = useState<string[]>([]);
   const [modelDropdownVisible, setModelDropdownVisible] = useState(false);
+  const [isFetchingModels, setIsFetchingModels] = useState(false);
+  const [modelFetchError, setModelFetchError] = useState<string | null>(null);
 
   // 测试状态
   const [isTesting, setIsTesting] = useState(false);
@@ -264,16 +268,89 @@ export const LLMSettingsScreen: React.FC = () => {
     return configs.find(c => c.provider === provider);
   };
 
+  // 获取模型列表（优先从 API 获取，回退到默认列表）
+  const fetchModelList = useCallback(async (provider: LLMProvider, currentApiKey?: string, currentBaseUrl?: string) => {
+    setIsFetchingModels(true);
+    setModelFetchError(null);
+
+    try {
+      // 优先尝试从 API 获取
+      if (currentApiKey || provider === LLMProvider.OLLAMA) {
+        let tempConfig: LLMConfig;
+
+        switch (provider) {
+          case LLMProvider.OPENAI:
+            tempConfig = { provider, apiKey: currentApiKey || '', model: '', baseUrl: currentBaseUrl } as OpenAIConfig;
+            break;
+          case LLMProvider.ANTHROPIC:
+            tempConfig = { provider, apiKey: currentApiKey || '', model: '', baseUrl: currentBaseUrl } as AnthropicConfig;
+            break;
+          case LLMProvider.GEMINI:
+            tempConfig = { provider, apiKey: currentApiKey || '', model: '', baseUrl: currentBaseUrl } as GeminiConfig;
+            break;
+          case LLMProvider.DEEPSEEK:
+            tempConfig = { provider, apiKey: currentApiKey || '', model: '', baseUrl: currentBaseUrl } as DeepSeekConfig;
+            break;
+          case LLMProvider.MOONSHOT:
+            tempConfig = { provider, apiKey: currentApiKey || '', model: '', baseUrl: currentBaseUrl } as MoonshotConfig;
+            break;
+          case LLMProvider.OLLAMA:
+            tempConfig = { provider, model: '', baseUrl: currentBaseUrl || 'http://192.168.1.10:11434' } as OllamaConfig;
+            break;
+          case LLMProvider.CUSTOM:
+            tempConfig = { provider, apiKey: currentApiKey || '', model: '', baseUrl: currentBaseUrl || '' } as CustomConfig;
+            break;
+          default:
+            setModels(getDefaultModels(provider));
+            return;
+        }
+
+        const providerInstance = createProvider(tempConfig);
+        if (providerInstance.fetchModels) {
+          const modelInfos = await providerInstance.fetchModels();
+          const modelIds = modelInfos.map((m: ModelInfo) => m.id);
+          setModels(modelIds.length > 0 ? modelIds : getDefaultModels(provider));
+          return;
+        }
+      }
+
+      // 无 API Key 或提供商不支持 fetchModels，尝试缓存
+      const cached = await getCachedModels(provider);
+      if (cached) {
+        setModels(cached);
+        return;
+      }
+
+      // 回退到默认列表
+      setModels(getDefaultModels(provider));
+    } catch (error) {
+      setModelFetchError(`获取模型列表失败: ${(error as Error).message}`);
+      // 出错时回退到默认列表
+      setModels(getDefaultModels(provider));
+    } finally {
+      setIsFetchingModels(false);
+    }
+  }, []);
+
   // 打开编辑对话框
-  const handleEdit = useCallback((provider: LLMProvider) => {
+  const handleEdit = useCallback(async (provider: LLMProvider) => {
     const existingConfig = getConfigByProvider(provider);
     setEditingProvider(provider);
     setApiKey((existingConfig as OpenAIConfig | AnthropicConfig)?.apiKey || '');
     setBaseUrl((existingConfig as OpenAIConfig | AnthropicConfig)?.baseUrl || '');
-    setModels(getDefaultModels(provider));
-    setSelectedModel(existingConfig?.model || getDefaultModels(provider)[0] || '');
+    setSelectedModel(existingConfig?.model || '');
     setDialogVisible(true);
-  }, [configs]);
+
+    // 异步获取模型列表
+    await fetchModelList(
+      provider,
+      (existingConfig as OpenAIConfig | AnthropicConfig)?.apiKey,
+      (existingConfig as OpenAIConfig | AnthropicConfig)?.baseUrl
+    );
+    if (!existingConfig?.model) {
+      setSelectedModel(models[0] || '');
+    }
+  }, [configs, fetchModelList, models]);
 
   // 保存配置
   const handleSave = useCallback(async () => {
@@ -541,7 +618,25 @@ export const LLMSettingsScreen: React.FC = () => {
                   mode="outlined"
                 />
               )}
-              <Text style={styles.modelLabel}>选择模型</Text>
+              <View style={styles.modelHeader}>
+                <Text style={styles.modelLabel}>选择模型</Text>
+                <Button
+                  mode="text"
+                  compact
+                  icon="refresh"
+                  loading={isFetchingModels}
+                  disabled={isFetchingModels}
+                  onPress={() => fetchModelList(editingProvider!, apiKey, baseUrl)}
+                >
+                  刷新
+                </Button>
+              </View>
+              {isFetchingModels && (
+                <ActivityIndicator size="small" color={barColors.primary} style={styles.modelLoading} />
+              )}
+              {modelFetchError && (
+                <Text style={styles.modelErrorText}>{modelFetchError}</Text>
+              )}
               <Menu
                 visible={modelDropdownVisible}
                 onDismiss={() => setModelDropdownVisible(false)}
@@ -550,8 +645,9 @@ export const LLMSettingsScreen: React.FC = () => {
                     mode="outlined"
                     onPress={() => setModelDropdownVisible(true)}
                     style={styles.modelButton}
+                    disabled={models.length === 0}
                   >
-                    {selectedModel || '请选择模型'}
+                    {selectedModel || (models.length > 0 ? '请选择模型' : '暂无可用模型')}
                   </Button>
                 }
               >
@@ -702,13 +798,26 @@ const styles = StyleSheet.create({
     color: barColors.textSecondary,
     lineHeight: 18,
   },
+  modelHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   modelLabel: {
     fontSize: 14,
     color: barColors.textSecondary,
-    marginBottom: 8,
   },
   modelButton: {
     marginBottom: 16,
+  },
+  modelLoading: {
+    marginBottom: 12,
+  },
+  modelErrorText: {
+    fontSize: 12,
+    color: '#ef4444',
+    marginBottom: 12,
   },
   testingContainer: {
     flexDirection: 'row',
