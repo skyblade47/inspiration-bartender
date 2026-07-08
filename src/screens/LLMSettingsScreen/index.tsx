@@ -30,6 +30,11 @@ import {
   OpenAIConfig,
   AnthropicConfig,
   OllamaConfig,
+  GeminiConfig,
+  DeepSeekConfig,
+  MoonshotConfig,
+  QwenConfig,
+  CustomConfig,
   initConfigDatabase,
   saveConfig,
   getAllConfigs,
@@ -62,6 +67,36 @@ const PROVIDER_INFO = {
     icon: '💻',
     description: '本地部署的开源模型',
     color: '#6366f1',
+  },
+  [LLMProvider.GEMINI]: {
+    name: 'Google Gemini',
+    icon: '🌟',
+    description: 'Gemini 1.5 Pro / Flash 模型',
+    color: '#4285f4',
+  },
+  [LLMProvider.DEEPSEEK]: {
+    name: 'DeepSeek',
+    icon: '🔵',
+    description: '深度求索模型',
+    color: '#007aff',
+  },
+  [LLMProvider.MOONSHOT]: {
+    name: 'Moonshot',
+    icon: '🌙',
+    description: '月之暗面模型',
+    color: '#8b5cf6',
+  },
+  [LLMProvider.QWEN]: {
+    name: 'Qwen',
+    icon: '🐉',
+    description: '阿里云通义千问模型',
+    color: '#ff6b35',
+  },
+  [LLMProvider.CUSTOM]: {
+    name: '自定义',
+    icon: '⚙️',
+    description: '兼容 OpenAI 格式的自定义 API',
+    color: '#64748b',
   },
 };
 
@@ -253,6 +288,10 @@ export const LLMSettingsScreen: React.FC = () => {
       Alert.alert('错误', '请选择模型');
       return;
     }
+    if (editingProvider === LLMProvider.CUSTOM && !baseUrl.trim()) {
+      Alert.alert('错误', '自定义 API 需要填写服务地址');
+      return;
+    }
 
     try {
       let config: LLMConfig;
@@ -271,12 +310,47 @@ export const LLMSettingsScreen: React.FC = () => {
           model: selectedModel,
           baseUrl: baseUrl.trim() || undefined,
         } as AnthropicConfig;
-      } else {
+      } else if (editingProvider === LLMProvider.OLLAMA) {
         config = {
           provider: LLMProvider.OLLAMA,
           model: selectedModel,
           baseUrl: baseUrl.trim() || 'http://192.168.1.10:11434',
         } as OllamaConfig;
+      } else if (editingProvider === LLMProvider.GEMINI) {
+        config = {
+          provider: LLMProvider.GEMINI,
+          apiKey: apiKey.trim(),
+          model: selectedModel,
+          baseUrl: baseUrl.trim() || undefined,
+        } as GeminiConfig;
+      } else if (editingProvider === LLMProvider.DEEPSEEK) {
+        config = {
+          provider: LLMProvider.DEEPSEEK,
+          apiKey: apiKey.trim(),
+          model: selectedModel,
+          baseUrl: baseUrl.trim() || undefined,
+        } as DeepSeekConfig;
+      } else if (editingProvider === LLMProvider.MOONSHOT) {
+        config = {
+          provider: LLMProvider.MOONSHOT,
+          apiKey: apiKey.trim(),
+          model: selectedModel,
+          baseUrl: baseUrl.trim() || undefined,
+        } as MoonshotConfig;
+      } else if (editingProvider === LLMProvider.QWEN) {
+        config = {
+          provider: LLMProvider.QWEN,
+          apiKey: apiKey.trim(),
+          model: selectedModel,
+          baseUrl: baseUrl.trim() || undefined,
+        } as QwenConfig;
+      } else {
+        config = {
+          provider: LLMProvider.CUSTOM,
+          apiKey: apiKey.trim(),
+          model: selectedModel,
+          baseUrl: baseUrl.trim(),
+        } as CustomConfig;
       }
 
       await saveConfig(config, !defaultProvider);
@@ -403,7 +477,7 @@ export const LLMSettingsScreen: React.FC = () => {
 
         {/* 配置列表 */}
         <Text style={styles.sectionTitle}>可用提供商</Text>
-        {([LLMProvider.OPENAI, LLMProvider.ANTHROPIC, LLMProvider.OLLAMA] as LLMProvider[]).map((provider) => (
+        {([LLMProvider.OPENAI, LLMProvider.ANTHROPIC, LLMProvider.GEMINI, LLMProvider.DEEPSEEK, LLMProvider.MOONSHOT, LLMProvider.QWEN, LLMProvider.OLLAMA, LLMProvider.CUSTOM] as LLMProvider[]).map((provider) => (
           <ConfigCard
             key={provider}
             provider={provider}
@@ -459,10 +533,10 @@ export const LLMSettingsScreen: React.FC = () => {
               )}
               {editingProvider !== LLMProvider.OLLAMA && (
                 <TextInput
-                  label="自定义端点（可选）"
+                  label={editingProvider === LLMProvider.CUSTOM ? '服务地址（必填）' : '自定义端点（可选）'}
                   value={baseUrl}
                   onChangeText={setBaseUrl}
-                  placeholder={`https://api.${editingProvider?.toString()}.com`}
+                  placeholder={editingProvider === LLMProvider.CUSTOM ? 'https://api.example.com/v1' : `https://api.${editingProvider?.toString()}.com`}
                   style={styles.input}
                   mode="outlined"
                 />

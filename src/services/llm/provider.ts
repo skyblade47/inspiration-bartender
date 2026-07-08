@@ -9,6 +9,11 @@ import {
   OpenAIConfig,
   AnthropicConfig,
   OllamaConfig,
+  GeminiConfig,
+  DeepSeekConfig,
+  MoonshotConfig,
+  QwenConfig,
+  CustomConfig,
 } from './config';
 
 // 消息角色类型
@@ -406,6 +411,441 @@ class OllamaProvider implements ILLMProvider {
 }
 
 /**
+ * Google Gemini 提供商实现
+ */
+class GeminiProvider implements ILLMProvider {
+  private config: GeminiConfig;
+
+  constructor(config: GeminiConfig) {
+    this.config = config;
+  }
+
+  async chat(request: ChatRequest): Promise<ChatResponse> {
+    const baseUrl = this.config.baseUrl || 'https://generativelanguage.googleapis.com/v1beta';
+    
+    const systemMessage = request.messages.find(m => m.role === MessageRole.SYSTEM);
+    const otherMessages = request.messages.filter(m => m.role !== MessageRole.SYSTEM);
+
+    const response = await fetch(`${baseUrl}/${this.config.model}:generateContent`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.config.apiKey}`,
+      },
+      body: JSON.stringify({
+        contents: otherMessages.map(m => ({
+          role: m.role === MessageRole.USER ? 'user' : 'model',
+          parts: [{ text: m.content }],
+        })),
+        systemInstruction: systemMessage ? { parts: [{ text: systemMessage.content }] } : undefined,
+        generationConfig: {
+          temperature: request.temperature ?? this.config.temperature ?? 0.7,
+          maxOutputTokens: request.maxTokens ?? this.config.maxTokens ?? 2048,
+          topP: request.topP ?? this.config.topP ?? 1,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Gemini API 错误: ${response.status} - ${error}`);
+    }
+
+    const data = await response.json();
+    
+    return {
+      content: data.candidates?.[0]?.content?.parts?.[0]?.text || '',
+      usage: {
+        promptTokens: data.usageMetadata?.promptTokenCount ?? 0,
+        completionTokens: data.usageMetadata?.candidatesTokenCount ?? 0,
+        totalTokens: (data.usageMetadata?.promptTokenCount ?? 0) + (data.usageMetadata?.candidatesTokenCount ?? 0),
+      },
+      finishReason: data.candidates?.[0]?.finishReason,
+    };
+  }
+}
+
+/**
+ * DeepSeek 提供商实现（兼容 OpenAI 格式）
+ */
+class DeepSeekProvider implements ILLMProvider {
+  private config: DeepSeekConfig;
+
+  constructor(config: DeepSeekConfig) {
+    this.config = config;
+  }
+
+  async chat(request: ChatRequest): Promise<ChatResponse> {
+    const baseUrl = this.config.baseUrl || 'https://api.deepseek.com/v1';
+    
+    const response = await fetch(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.config.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: this.config.model,
+        messages: request.messages.map(m => ({
+          role: m.role,
+          content: m.content,
+        })),
+        temperature: request.temperature ?? this.config.temperature ?? 0.7,
+        max_tokens: request.maxTokens ?? this.config.maxTokens ?? 2048,
+        top_p: request.topP ?? this.config.topP ?? 1,
+        stream: false,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`DeepSeek API 错误: ${response.status} - ${error}`);
+    }
+
+    const data = await response.json();
+    
+    return {
+      content: data.choices[0].message.content,
+      usage: {
+        promptTokens: data.usage?.prompt_tokens ?? 0,
+        completionTokens: data.usage?.completion_tokens ?? 0,
+        totalTokens: data.usage?.total_tokens ?? 0,
+      },
+      finishReason: data.choices[0].finish_reason,
+    };
+  }
+
+  async chatStream(
+    request: ChatRequest,
+    onChunk: (chunk: string) => void
+  ): Promise<void> {
+    const baseUrl = this.config.baseUrl || 'https://api.deepseek.com/v1';
+    
+    const response = await fetch(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.config.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: this.config.model,
+        messages: request.messages.map(m => ({
+          role: m.role,
+          content: m.content,
+        })),
+        temperature: request.temperature ?? this.config.temperature ?? 0.7,
+        max_tokens: request.maxTokens ?? this.config.maxTokens ?? 2048,
+        stream: true,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`DeepSeek API 错误: ${response.status} - ${error}`);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error('无法获取响应流');
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+          if (data === '[DONE]') continue;
+          
+          try {
+            const parsed = JSON.parse(data);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) onChunk(content);
+          } catch {
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Moonshot 提供商实现（兼容 OpenAI 格式）
+ */
+class MoonshotProvider implements ILLMProvider {
+  private config: MoonshotConfig;
+
+  constructor(config: MoonshotConfig) {
+    this.config = config;
+  }
+
+  async chat(request: ChatRequest): Promise<ChatResponse> {
+    const baseUrl = this.config.baseUrl || 'https://api.moonshot.cn/v1';
+    
+    const response = await fetch(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.config.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: this.config.model,
+        messages: request.messages.map(m => ({
+          role: m.role,
+          content: m.content,
+        })),
+        temperature: request.temperature ?? this.config.temperature ?? 0.7,
+        max_tokens: request.maxTokens ?? this.config.maxTokens ?? 2048,
+        top_p: request.topP ?? this.config.topP ?? 1,
+        stream: false,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Moonshot API 错误: ${response.status} - ${error}`);
+    }
+
+    const data = await response.json();
+    
+    return {
+      content: data.choices[0].message.content,
+      usage: {
+        promptTokens: data.usage?.prompt_tokens ?? 0,
+        completionTokens: data.usage?.completion_tokens ?? 0,
+        totalTokens: data.usage?.total_tokens ?? 0,
+      },
+      finishReason: data.choices[0].finish_reason,
+    };
+  }
+
+  async chatStream(
+    request: ChatRequest,
+    onChunk: (chunk: string) => void
+  ): Promise<void> {
+    const baseUrl = this.config.baseUrl || 'https://api.moonshot.cn/v1';
+    
+    const response = await fetch(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.config.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: this.config.model,
+        messages: request.messages.map(m => ({
+          role: m.role,
+          content: m.content,
+        })),
+        temperature: request.temperature ?? this.config.temperature ?? 0.7,
+        max_tokens: request.maxTokens ?? this.config.maxTokens ?? 2048,
+        stream: true,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Moonshot API 错误: ${response.status} - ${error}`);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error('无法获取响应流');
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+          if (data === '[DONE]') continue;
+          
+          try {
+            const parsed = JSON.parse(data);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) onChunk(content);
+          } catch {
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Qwen 提供商实现（兼容 OpenAI 格式）
+ */
+class QwenProvider implements ILLMProvider {
+  private config: QwenConfig;
+
+  constructor(config: QwenConfig) {
+    this.config = config;
+  }
+
+  async chat(request: ChatRequest): Promise<ChatResponse> {
+    const baseUrl = this.config.baseUrl || 'https://dashscope.aliyuncs.com/api/v1';
+    
+    const response = await fetch(`${baseUrl}/services/aigc/text-generation/generation`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.config.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: this.config.model,
+        input: {
+          messages: request.messages.map(m => ({
+            role: m.role,
+            content: m.content,
+          })),
+        },
+        parameters: {
+          temperature: request.temperature ?? this.config.temperature ?? 0.7,
+          max_tokens: request.maxTokens ?? this.config.maxTokens ?? 2048,
+          top_p: request.topP ?? this.config.topP ?? 1,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Qwen API 错误: ${response.status} - ${error}`);
+    }
+
+    const data = await response.json();
+    
+    return {
+      content: data.output?.choices?.[0]?.message?.content || '',
+      usage: {
+        promptTokens: data.usage?.input_tokens ?? 0,
+        completionTokens: data.usage?.output_tokens ?? 0,
+        totalTokens: data.usage?.total_tokens ?? 0,
+      },
+      finishReason: data.output?.choices?.[0]?.finish_reason,
+    };
+  }
+}
+
+/**
+ * Custom 提供商实现（兼容 OpenAI 格式的任意 API）
+ */
+class CustomProvider implements ILLMProvider {
+  private config: CustomConfig;
+
+  constructor(config: CustomConfig) {
+    this.config = config;
+  }
+
+  async chat(request: ChatRequest): Promise<ChatResponse> {
+    const response = await fetch(`${this.config.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.config.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: this.config.model,
+        messages: request.messages.map(m => ({
+          role: m.role,
+          content: m.content,
+        })),
+        temperature: request.temperature ?? this.config.temperature ?? 0.7,
+        max_tokens: request.maxTokens ?? this.config.maxTokens ?? 2048,
+        top_p: request.topP ?? this.config.topP ?? 1,
+        stream: false,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`自定义 API 错误: ${response.status} - ${error}`);
+    }
+
+    const data = await response.json();
+    
+    return {
+      content: data.choices?.[0]?.message?.content || '',
+      usage: {
+        promptTokens: data.usage?.prompt_tokens ?? 0,
+        completionTokens: data.usage?.completion_tokens ?? 0,
+        totalTokens: data.usage?.total_tokens ?? 0,
+      },
+      finishReason: data.choices?.[0]?.finish_reason,
+    };
+  }
+
+  async chatStream(
+    request: ChatRequest,
+    onChunk: (chunk: string) => void
+  ): Promise<void> {
+    const response = await fetch(`${this.config.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.config.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: this.config.model,
+        messages: request.messages.map(m => ({
+          role: m.role,
+          content: m.content,
+        })),
+        temperature: request.temperature ?? this.config.temperature ?? 0.7,
+        max_tokens: request.maxTokens ?? this.config.maxTokens ?? 2048,
+        stream: true,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`自定义 API 错误: ${response.status} - ${error}`);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error('无法获取响应流');
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+          if (data === '[DONE]') continue;
+          
+          try {
+            const parsed = JSON.parse(data);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) onChunk(content);
+          } catch {
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
  * 创建 LLM 提供商实例
  * @param config LLM 配置
  */
@@ -417,6 +857,16 @@ export function createProvider(config: LLMConfig): ILLMProvider {
       return new AnthropicProvider(config);
     case LLMProvider.OLLAMA:
       return new OllamaProvider(config);
+    case LLMProvider.GEMINI:
+      return new GeminiProvider(config);
+    case LLMProvider.DEEPSEEK:
+      return new DeepSeekProvider(config);
+    case LLMProvider.MOONSHOT:
+      return new MoonshotProvider(config);
+    case LLMProvider.QWEN:
+      return new QwenProvider(config);
+    case LLMProvider.CUSTOM:
+      return new CustomProvider(config);
     default:
       throw new Error('不支持的 LLM 提供商');
   }

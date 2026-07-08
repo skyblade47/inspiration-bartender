@@ -10,6 +10,11 @@ export enum LLMProvider {
   OPENAI = 'openai',
   ANTHROPIC = 'anthropic',
   OLLAMA = 'ollama',
+  GEMINI = 'gemini',
+  DEEPSEEK = 'deepseek',
+  MOONSHOT = 'moonshot',
+  QWEN = 'qwen',
+  CUSTOM = 'custom',
 }
 
 // 基础配置接口
@@ -41,8 +46,43 @@ export interface OllamaConfig extends BaseLLMConfig {
   baseUrl: string; // Ollama 服务地址，如 http://localhost:11434
 }
 
+// Google Gemini 配置
+export interface GeminiConfig extends BaseLLMConfig {
+  provider: LLMProvider.GEMINI;
+  apiKey: string;
+  baseUrl?: string;
+}
+
+// DeepSeek 配置
+export interface DeepSeekConfig extends BaseLLMConfig {
+  provider: LLMProvider.DEEPSEEK;
+  apiKey: string;
+  baseUrl?: string;
+}
+
+// Moonshot 配置
+export interface MoonshotConfig extends BaseLLMConfig {
+  provider: LLMProvider.MOONSHOT;
+  apiKey: string;
+  baseUrl?: string;
+}
+
+// Qwen 配置
+export interface QwenConfig extends BaseLLMConfig {
+  provider: LLMProvider.QWEN;
+  apiKey: string;
+  baseUrl?: string;
+}
+
+// 自定义配置（兼容 OpenAI 格式的任意 API）
+export interface CustomConfig extends BaseLLMConfig {
+  provider: LLMProvider.CUSTOM;
+  apiKey: string;
+  baseUrl: string;
+}
+
 // 联合类型
-export type LLMConfig = OpenAIConfig | AnthropicConfig | OllamaConfig;
+export type LLMConfig = OpenAIConfig | AnthropicConfig | OllamaConfig | GeminiConfig | DeepSeekConfig | MoonshotConfig | QwenConfig | CustomConfig;
 
 // 配置存储键名
 const CONFIG_TABLE_NAME = 'llm_config';
@@ -187,11 +227,15 @@ export function validateConfig(config: LLMConfig): boolean {
   switch (config.provider) {
     case LLMProvider.OPENAI:
     case LLMProvider.ANTHROPIC:
-      // 需要 API Key
+    case LLMProvider.GEMINI:
+    case LLMProvider.DEEPSEEK:
+    case LLMProvider.MOONSHOT:
+    case LLMProvider.QWEN:
       return !!(config as OpenAIConfig).apiKey && !!(config as OpenAIConfig).model;
     case LLMProvider.OLLAMA:
-      // 需要 baseUrl
       return !!(config as OllamaConfig).baseUrl && !!(config as OllamaConfig).model;
+    case LLMProvider.CUSTOM:
+      return !!(config as CustomConfig).apiKey && !!(config as CustomConfig).baseUrl && !!(config as CustomConfig).model;
     default:
       return false;
   }
@@ -209,6 +253,16 @@ export function getDefaultModels(provider: LLMProvider): string[] {
       return ['claude-3-5-sonnet-20241022', 'claude-3-opus-20240229', 'claude-3-haiku-20240307'];
     case LLMProvider.OLLAMA:
       return ['llama3', 'llama3:70b', 'mistral', 'codellama', 'qwen2'];
+    case LLMProvider.GEMINI:
+      return ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-1.0-pro'];
+    case LLMProvider.DEEPSEEK:
+      return ['deepseek-chat', 'deepseek-r1.5', 'deepseek-coder'];
+    case LLMProvider.MOONSHOT:
+      return ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'];
+    case LLMProvider.QWEN:
+      return ['qwen-plus', 'qwen-turbo', 'qwen-max', 'qwen-max-longcontext'];
+    case LLMProvider.CUSTOM:
+      return ['gpt-4o', 'gpt-3.5-turbo', 'custom-model'];
     default:
       return [];
   }
