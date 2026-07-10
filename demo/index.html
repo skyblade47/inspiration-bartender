@@ -816,10 +816,14 @@
                 <!-- Provider 选择 -->
                 <div class="form-group">
                     <label class="form-label">LLM 提供商</label>
-                    <select id="llmProvider" class="form-select">
+                    <select id="llmProvider" class="form-select" onchange="onProviderChange()">
                         <option value="openai">OpenAI (GPT-4/3.5)</option>
                         <option value="anthropic">Anthropic (Claude)</option>
                         <option value="ollama">Ollama (本地模型)</option>
+                        <option value="deepseek">DeepSeek (深度求索)</option>
+                        <option value="gemini">Google Gemini</option>
+                        <option value="moonshot">Moonshot (月之暗面)</option>
+                        <option value="qwen">Qwen (通义千问)</option>
                         <option value="custom">自定义 API</option>
                     </select>
                 </div>
@@ -840,10 +844,10 @@
                 <div class="form-group">
                     <label class="form-label">模型</label>
                     <select id="model" class="form-select">
-                        <option value="gpt-4">GPT-4</option>
-                        <option value="gpt-4-turbo">GPT-4 Turbo</option>
-                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
                     </select>
+                    <button id="refreshModelsBtn" class="btn btn-secondary" style="width: 100%; margin-top: 8px; padding: 6px;" onclick="refreshModels()" title="从API获取最新模型列表">
+                        🔄 刷新模型列表
+                    </button>
                 </div>
 
                 <!-- 测试按钮 -->
@@ -1106,8 +1110,15 @@
                 const cfg = JSON.parse(config);
                 document.getElementById('llmProvider').value = cfg.provider || 'openai';
                 document.getElementById('apiKey').value = cfg.apiKey || '';
-                document.getElementById('baseUrl').value = cfg.baseUrl || '';
-                document.getElementById('model').value = cfg.model || 'gpt-4';
+            }
+            onProviderChange();
+            const savedModel = localStorage.getItem('llmConfig') ? JSON.parse(localStorage.getItem('llmConfig')).model : '';
+            if (savedModel) {
+                const modelSelect = document.getElementById('model');
+                const option = Array.from(modelSelect.options).find(o => o.value === savedModel);
+                if (option) {
+                    modelSelect.value = savedModel;
+                }
             }
         }
 
@@ -1160,14 +1171,154 @@
             btn.textContent = '🔗 测试连接';
         }
 
+        const DEFAULT_MODELS = {
+            openai: [
+                { value: 'gpt-4', label: 'GPT-4' },
+                { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
+                { value: 'gpt-4o', label: 'GPT-4o' },
+                { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
+            ],
+            anthropic: [
+                { value: 'claude-3-5-sonnet-20240620', label: 'Claude 3.5 Sonnet' },
+                { value: 'claude-3-opus-20240229', label: 'Claude 3 Opus' },
+                { value: 'claude-3-sonnet-20240229', label: 'Claude 3 Sonnet' },
+                { value: 'claude-3-haiku-20240307', label: 'Claude 3 Haiku' },
+            ],
+            ollama: [
+                { value: 'llama3', label: 'Llama 3' },
+                { value: 'mistral', label: 'Mistral' },
+                { value: 'gemma', label: 'Gemma' },
+                { value: 'qwen', label: 'Qwen' },
+            ],
+            deepseek: [
+                { value: 'deepseek-chat', label: 'DeepSeek Chat' },
+                { value: 'deepseek-r1', label: 'DeepSeek R1' },
+                { value: 'deepseek-llm-7b-chat', label: 'DeepSeek LLM 7B' },
+                { value: 'deepseek-llm-67b-chat', label: 'DeepSeek LLM 67B' },
+            ],
+            gemini: [
+                { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
+                { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
+                { value: 'gemini-pro', label: 'Gemini Pro' },
+            ],
+            moonshot: [
+                { value: 'moonshot-v1-8k', label: 'Moonshot 8K' },
+                { value: 'moonshot-v1-32k', label: 'Moonshot 32K' },
+                { value: 'moonshot-v1-128k', label: 'Moonshot 128K' },
+            ],
+            qwen: [
+                { value: 'qwen-turbo', label: 'Qwen Turbo' },
+                { value: 'qwen-plus', label: 'Qwen Plus' },
+                { value: 'qwen-max', label: 'Qwen Max' },
+            ],
+            custom: [
+                { value: 'custom-model', label: '自定义模型' },
+            ],
+        };
+
+        const DEFAULT_BASE_URLS = {
+            openai: 'https://api.openai.com/v1',
+            anthropic: 'https://api.anthropic.com/v1',
+            ollama: 'http://localhost:11434/v1',
+            deepseek: 'https://api.deepseek.com/v1',
+            gemini: 'https://generativelanguage.googleapis.com/v1beta',
+            moonshot: 'https://api.moonshot.cn/v1',
+            qwen: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+            custom: '',
+        };
+
         function getDefaultBaseUrl(provider) {
-            const urls = {
-                openai: 'https://api.openai.com/v1',
-                anthropic: 'https://api.anthropic.com/v1',
-                ollama: 'http://localhost:11434/v1',
-                custom: '',
-            };
-            return urls[provider] || '';
+            return DEFAULT_BASE_URLS[provider] || '';
+        }
+
+        function renderModels(models) {
+            const modelSelect = document.getElementById('model');
+            modelSelect.innerHTML = '';
+            models.forEach(m => {
+                const option = document.createElement('option');
+                option.value = m.value;
+                option.textContent = m.label;
+                modelSelect.appendChild(option);
+            });
+        }
+
+        function onProviderChange() {
+            const provider = document.getElementById('llmProvider').value;
+            const baseUrlInput = document.getElementById('baseUrl');
+            const models = DEFAULT_MODELS[provider] || DEFAULT_MODELS.custom;
+
+            baseUrlInput.value = getDefaultBaseUrl(provider);
+            renderModels(models);
+        }
+
+        async function refreshModels() {
+            const provider = document.getElementById('llmProvider').value;
+            const apiKey = document.getElementById('apiKey').value;
+            const baseUrl = document.getElementById('baseUrl').value || getDefaultBaseUrl(provider);
+
+            if (!apiKey) {
+                addLog('error', '请先输入 API Key 才能刷新模型列表');
+                return;
+            }
+
+            const btn = document.getElementById('refreshModelsBtn');
+            btn.disabled = true;
+            btn.textContent = '🔄 获取中...';
+
+            try {
+                const models = await fetchModelsFromAPI(provider, apiKey, baseUrl);
+                if (models.length > 0) {
+                    renderModels(models);
+                    addLog('success', `成功获取 ${models.length} 个模型`);
+                } else {
+                    addLog('warning', '未获取到模型，使用默认列表');
+                    renderModels(DEFAULT_MODELS[provider] || DEFAULT_MODELS.custom);
+                }
+            } catch (error) {
+                addLog('error', `获取模型失败: ${error.message}，使用默认列表`);
+                renderModels(DEFAULT_MODELS[provider] || DEFAULT_MODELS.custom);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔄 刷新模型列表';
+            }
+        }
+
+        async function fetchModelsFromAPI(provider, apiKey, baseUrl) {
+            let endpoint, headers;
+
+            if (provider === 'openai' || provider === 'deepseek' || provider === 'moonshot' || provider === 'qwen' || provider === 'custom') {
+                endpoint = `${baseUrl}/models`;
+                headers = {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`,
+                };
+            } else if (provider === 'ollama') {
+                endpoint = `${baseUrl}/tags`;
+                headers = {};
+            } else {
+                return [];
+            }
+
+            const response = await fetch(endpoint, { headers });
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (provider === 'openai' || provider === 'deepseek' || provider === 'moonshot' || provider === 'qwen' || provider === 'custom') {
+                return data.data.map(m => ({
+                    value: m.id,
+                    label: m.id,
+                }));
+            } else if (provider === 'ollama') {
+                return data.models.map(m => ({
+                    value: m.name,
+                    label: m.name,
+                }));
+            }
+
+            return [];
         }
 
         function updateConnectionStatus(connected, error = '') {
@@ -1195,7 +1346,8 @@
 
             let endpoint, headers, body;
 
-            if (provider === 'openai' || provider === 'ollama' || provider === 'custom') {
+            if (provider === 'openai' || provider === 'ollama' || provider === 'custom' || 
+                provider === 'deepseek' || provider === 'moonshot' || provider === 'qwen') {
                 endpoint = `${baseUrl}/chat/completions`;
                 headers = {
                     'Content-Type': 'application/json',
@@ -1221,6 +1373,22 @@
                     max_tokens: maxTokens,
                     temperature,
                 };
+            } else if (provider === 'gemini') {
+                endpoint = `${baseUrl}/models/${model}:generateContent`;
+                headers = {
+                    'Content-Type': 'application/json',
+                    'x-goog-api-key': apiKey,
+                };
+                body = {
+                    contents: messages.map(m => ({
+                        role: m.role === 'user' ? 'user' : 'model',
+                        parts: [{ text: m.content }],
+                    })),
+                    generationConfig: {
+                        temperature,
+                        maxOutputTokens: maxTokens,
+                    },
+                };
             }
 
             try {
@@ -1232,7 +1400,7 @@
 
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.error?.message || `HTTP ${response.status}`);
+                    throw new Error(errorData.error?.message || errorData.message || `HTTP ${response.status}`);
                 }
 
                 const data = await response.json();
@@ -1240,8 +1408,14 @@
                 let content;
                 if (provider === 'anthropic') {
                     content = data.content[0].text;
+                } else if (provider === 'gemini') {
+                    content = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
                 } else {
-                    content = data.choices[0].message.content;
+                    content = data.choices?.[0]?.message?.content || '';
+                }
+
+                if (!content) {
+                    throw new Error('未获取到响应内容');
                 }
 
                 addLog('success', `响应: ${content.substring(0, 100)}...`);
